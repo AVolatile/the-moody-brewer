@@ -3,9 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "description": "Moody Brewer static site with Netlify Functions",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
+    "@netlify/neon": "^0.1.0",
     "pg": "^8.11.5"
   }
 }
-
