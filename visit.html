@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Moody Brewer | Visit Us</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="Visit The Moody Brewer" name="keywords">
+    <meta content="Find our address, hours, and directions." name="description">
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Libraries Stylesheet -->
+    <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+    <link href="lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css" rel="stylesheet" />
+
+    <!-- Styles -->
+    <link href="css/style.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/css/theme.css">
+    <link rel="icon" href="./assets/images/favicon.ico" sizes="any">
+    <style>
+      /* Page-specific polish for a cleaner, bolder layout */
+      .visit-cards .panel { padding: 20px; border-radius: 16px; }
+      .card-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-weight: 700; }
+      .icon-round { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(232,111,146,.12); color: var(--accent); }
+      .address-lines { margin: 0 0 10px; }
+      .address-actions .btn { margin-right: 8px; margin-bottom: 8px; }
+      .hours-list { list-style: none; padding: 0; margin: 0; }
+      .hours-list li { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+      .hours-list li:last-child { border-bottom: 0; }
+      .tip { display: flex; align-items: flex-start; gap: 10px; }
+      .map-panel { border-radius: 16px; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,.12); }
+      .map-panel iframe { border: 0; }
+      @media (max-width: 991.98px) {
+        .visit-cards .col-lg-4 { margin-bottom: 16px; }
+      }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar Start -->
+    <div class="container-fluid p-0 nav-bar">
+        <nav class="navbar navbar-expand-lg bg-none navbar-dark py-3">
+            <a href="index.html" class="navbar-brand px-lg-4 m-0">
+                <img src="./assets/images/mb_logo.png" alt="Moody Brewer" />
+            </a>
+            <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#navbarCollapse" aria-label="Toggle navigation" aria-controls="navbarCollapse" aria-expanded="false">
+              <div class="hamburger" aria-hidden="true"><span></span><span></span><span></span></div>
+            </button>
+            <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+                <div class="navbar-nav ml-auto p-4">
+                    <a href="index.html" class="nav-item nav-link">Home</a>
+                    <a href="menu.html" class="nav-item nav-link">Menu</a>
+                    <a href="about.html" class="nav-item nav-link">About</a>
+                    <a href="visit.html" class="nav-item nav-link">Visit</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+    <!-- Navbar End -->
+
+    <!-- Page Header Start -->
+    <div class="container-fluid page-header mb-0 position-relative overlay-bottom">
+        <div class="d-flex flex-column align-items-center justify-content-center pt-0 pt-lg-5" style="min-height: 400px">
+            <h1 class="display-4 mb-3 mt-0 mt-lg-5 text-white text-uppercase">Visit Us</h1>
+            <div class="d-inline-flex mb-lg-5">
+                <p class="m-0 text-white"><a class="text-white" href="index.html">Home</a></p>
+                <p class="m-0 text-white px-2">/</p>
+                <p class="m-0 text-white">Visit</p>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
+
+    <!-- Visit Content Start -->
+    <div class="container-fluid pt-5 pb-5 section-light after-header-white">
+      <div class="container">
+        <div class="section-title">
+          <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Plan Your Visit</h4>
+          <h1 class="display-4">Find Us</h1>
+        </div>
+
+        <!-- Info cards -->
+        <div class="row visit-cards">
+          <div class="col-lg-4">
+            <div class="panel h-100">
+              <h5 class="card-title"><span class="icon-round"><i class="fa fa-map-marker-alt"></i></span> Address</h5>
+              <p class="address-lines">
+                The Moody Brewer<br>
+                1219 Main Street<br>
+                West Warwick, RI
+              </p>
+              <div class="address-actions">
+                <a class="btn btn-primary" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=1219+Main+Street,+West+Warwick,+RI"><i class="fab fa-google mr-1"></i> Google Maps</a>
+                <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="http://maps.apple.com/?q=1219+Main+Street,+West+Warwick,+RI"><i class="fab fa-apple mr-1"></i> Apple Maps</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="panel h-100">
+              <h5 class="card-title"><span class="icon-round"><i class="fa fa-clock"></i></span> Hours</h5>
+              <ul class="hours-list">
+                <li><span>Sunday</span><strong>8:00 AM – 3:00 PM</strong></li>
+                <li><span>Monday</span><strong>7:00 AM – 4:00 PM</strong></li>
+                <li><span>Tuesday</span><strong>7:00 AM – 4:00 PM</strong></li>
+                <li><span>Wednesday</span><strong>7:00 AM – 4:00 PM</strong></li>
+                <li><span>Thursday</span><strong>7:00 AM – 4:00 PM</strong></li>
+                <li><span>Friday</span><strong>7:00 AM – 4:00 PM</strong></li>
+                <li><span>Saturday</span><strong>8:00 AM – 4:00 PM</strong></li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="panel h-100">
+              <h5 class="card-title"><span class="icon-round"><i class="fa fa-info-circle"></i></span> Good To Know</h5>
+              <p class="tip"><span class="icon-round" aria-hidden="true"><i class="fa fa-parking"></i></span> Street parking is available nearby.</p>
+              <p class="tip"><span class="icon-round" aria-hidden="true"><i class="fa fa-seedling"></i></span> Seasonal drinks rotate often — ask what’s new!</p>
+              <a class="btn btn-secondary mt-2" href="https://www.instagram.com/them00dybrewer/?hl=en" target="_blank" rel="noopener"><i class="fab fa-instagram mr-1"></i> Follow on Instagram</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="map-panel embed-responsive embed-responsive-21by9">
+              <iframe class="embed-responsive-item" loading="lazy" allowfullscreen src="https://www.google.com/maps?q=1219+Main+Street,+West+Warwick,+RI&output=embed"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Visit Content End -->
+
+    <!-- Footer Start -->
+    <div class="container-fluid footer mt-0 pt-5 px-0 position-relative">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-column footer-column--brand">
+            <h4 class="footer-heading footer-heading--brand">Moody Brewer</h4>
+            <p class="footer-tagline">Small-batch coffee, cozy bites, good vibes.</p>
+          </div>
+          <div class="footer-column">
+            <h4 class="footer-heading">Visit Us</h4>
+            <ul class="footer-list">
+              <li>1219 Main Street<br>West Warwick, RI</li>
+              <li>Mon–Fri&nbsp;7:00&nbsp;AM&nbsp;–&nbsp;4:00&nbsp;PM</li>
+              <li>Sat&nbsp;8:00&nbsp;AM&nbsp;–&nbsp;4:00&nbsp;PM</li>
+              <li>Sun&nbsp;8:00&nbsp;AM&nbsp;–&nbsp;3:00&nbsp;PM</li>
+            </ul>
+          </div>
+          <div class="footer-column">
+            <h4 class="footer-heading">Stay Connected</h4>
+            <p class="footer-note">Follow along for specials, events, and daily pours.</p>
+            <div class="footer-social">
+              <a class="btn btn-lg btn-lg-square" href="https://www.instagram.com/them00dybrewer/?hl=en" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom border-top mt-4 pt-3">
+          <p class="footer-bottom__copy mb-0">© 2025 The Moody Brewer • Crafted in Rhode Island</p>
+          <p class="footer-bottom__credit mb-0">Website by <a class="font-weight-bold" href="https://volatile-solutions.netlify.app/" target="_blank" rel="noopener">Volatile | Solutions</a></p>
+        </div>
+      </div>
+    </div>
+    <!-- Footer End -->
+
+    <!-- Back to Top -->
+    <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="fa fa-angle-double-up"></i></a>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+    <script src="lib/easing/easing.min.js"></script>
+    <script src="lib/waypoints/waypoints.min.js"></script>
+    <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+    <script src="lib/tempusdominus/js/moment.min.js"></script>
+    <script src="lib/tempusdominus/js/moment-timezone.min.js"></script>
+    <script src="lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
+
+    <!-- Contact Javascript File -->
+    <script src="mail/jqBootstrapValidation.min.js"></script>
+    <script src="mail/contact.js"></script>
+
+    <!-- Template Javascript -->
+    <script src="js/main.js"></script>
+    <script src="./assets/js/mb-nav.js"></script>
+</body>
+
+</html>

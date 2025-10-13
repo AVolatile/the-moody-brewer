@@ -1,0 +1,11 @@
+{
+  "name": "moody-brewer-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Moody Brewer static site with Netlify Functions",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pg": "^8.11.5"
+  }
+}
+

@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "category": "Signature Drinks",
+      "name": "Caramel Matcha",
+      "description": "Earthy matcha balanced with a ribbon of caramel.",
+      "price": 5.95
+    },
+    {
+      "category": "Signature Drinks",
+      "name": "Coconut Cream Latte",
+      "description": "Velvety coconut cream swirled into smooth espresso.",
+      "price": 5.75
+    },
+    {
+      "category": "Fresh Bites",
+      "name": "Pesto Panini",
+      "description": "Toasty mozzarella, basil pesto on artisan bread.",
+      "price": 8.75
+    }
+  ]
+}
+

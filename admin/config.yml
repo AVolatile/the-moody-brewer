@@ -1,0 +1,26 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "assets/images/uploads"
+public_folder: "/assets/images/uploads"
+
+collections:
+  - name: "menu"
+    label: "Menu"
+    files:
+      - file: "assets/data/menu.json"
+        label: "Menu Items"
+        name: "menu"
+        fields:
+          - label: "Items"
+            name: "items"
+            widget: "list"
+            collapsed: false
+            summary: "{{fields.category}} — {{fields.name}} (${{fields.price}})"
+            fields:
+              - { label: "Category", name: "category", widget: "string" }
+              - { label: "Name", name: "name", widget: "string" }
+              - { label: "Description", name: "description", widget: "text" }
+              - { label: "Price (USD)", name: "price", widget: "number", value_type: "float", min: 0, step: 0.01 }
+

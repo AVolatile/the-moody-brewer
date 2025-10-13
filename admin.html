@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Moody Brewer | Admin</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <meta name="description" content="Admin tools to manage menu items and prices.">
+
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+  <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+  <link href="lib/tempusdominus/css/tempusdominus-bootstrap-4.min.css" rel="stylesheet" />
+  <link href="css/style.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/theme.css">
+  <link rel="icon" href="assets/images/favicon.ico" sizes="any">
+  <style>
+    .admin-wrap { max-width: 1100px; margin: 80px auto 40px; padding: 16px; }
+    .admin-card { background: #fff; color: #2b1a1e; border: 1px solid rgba(0,0,0,.08); border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.10); padding: 16px; }
+    .admin-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    @media (max-width: 992px) { .admin-grid { grid-template-columns: 1fr; } }
+    .admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
+    .admin-header h2 { margin: 0; color:#2b1a1e; }
+    .lock { display:flex; gap:8px; align-items:center; }
+    .lock input { max-width: 180px; }
+    .table thead th { border-bottom: 1px solid rgba(0,0,0,.08); }
+    .table td, .table th { border-top: 1px solid rgba(0,0,0,.06); vertical-align: middle; }
+    .muted { opacity: .7; }
+    .actions .btn { margin-right: 6px; }
+    .footer-note { text-align:center; opacity:.7; margin-top: 16px; color:#2b1a1e; }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar (reuse site nav for continuity) -->
+  <div class="container-fluid p-0 nav-bar">
+    <nav class="navbar navbar-expand-lg bg-none navbar-dark py-3">
+      <a href="index.html" class="navbar-brand px-lg-4 m-0">
+        <img src="assets/images/mb_logo.png" alt="Moody Brewer" />
+      </a>
+      <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#navbarCollapse" aria-label="Toggle navigation" aria-controls="navbarCollapse" aria-expanded="false">
+        <div class="hamburger" aria-hidden="true"><span></span><span></span><span></span></div>
+      </button>
+      <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
+        <div class="navbar-nav ml-auto p-4">
+          <a href="index.html" class="nav-item nav-link">Home</a>
+          <a href="menu.html" class="nav-item nav-link">Menu</a>
+          <a href="about.html" class="nav-item nav-link">About</a>
+          <a href="visit.html" class="nav-item nav-link">Visit</a>
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <div class="admin-wrap">
+    <div class="admin-card">
+      <div class="admin-header">
+        <h2>Admin Panel — Menu Manager</h2>
+        <div class="lock">
+          <input id="passcode" type="password" class="form-control" placeholder="Enter passcode">
+          <button id="unlock" class="btn btn-primary">Unlock</button>
+        </div>
+      </div>
+      <p class="muted mb-2">Add, edit, and delete menu items. Changes save to the server (Neon via Netlify Function). Use Export to back up your data.</p>
+      <div id="lockedNotice" class="alert alert-warning py-2 px-3 mb-3" role="alert" style="display:none;">Locked. Enter passcode to edit.</div>
+
+      <div class="admin-grid">
+        <div>
+          <table class="table table-hover" id="menuTable">
+            <thead>
+              <tr>
+                <th style="width:18%">Category</th>
+                <th style="width:28%">Item</th>
+                <th>Description</th>
+                <th style="width:14%">Price</th>
+                <th style="width:16%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h5 class="mb-2">Add / Edit Item</h5>
+          <form id="itemForm">
+            <div class="form-group">
+              <label>Category</label>
+              <input type="text" class="form-control" id="fCategory" placeholder="e.g., Signature Drinks" required>
+            </div>
+            <div class="form-group">
+              <label>Item Name</label>
+              <input type="text" class="form-control" id="fName" required>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="form-control" id="fDesc" rows="2" required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Price (USD)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="fPrice" required>
+            </div>
+            <input type="hidden" id="fId">
+            <div class="d-flex mt-2">
+              <button class="btn btn-primary mr-2" type="submit" id="saveBtn"><i class="fa fa-save mr-1"></i> Save</button>
+              <button class="btn btn-secondary" type="button" id="resetBtn"><i class="fa fa-undo mr-1"></i> Reset</button>
+            </div>
+          </form>
+
+          <hr>
+          <div class="d-flex flex-wrap" style="gap:8px;">
+            <button class="btn btn-outline-primary" id="exportBtn"><i class="fa fa-file-export mr-1"></i> Export JSON</button>
+            <label class="btn btn-outline-primary mb-0" for="importFile"><i class="fa fa-file-import mr-1"></i> Import JSON</label>
+            <input id="importFile" type="file" accept="application/json" style="display:none;">
+            <button class="btn btn-outline-primary" id="clearBtn"><i class="fa fa-trash mr-1"></i> Clear All</button>
+            <a class="btn btn-secondary" href="menu.html" target="_blank" rel="noopener"><i class="fa fa-eye mr-1"></i> Preview Menu</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-note">Local only. For production updates, export JSON and use in your deployment workflow.</div>
+    </div>
+  </div>
+
+  <div class="container-fluid footer mt-0 pt-5 px-0 position-relative">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-column footer-column--brand">
+          <h4 class="footer-heading footer-heading--brand">Moody Brewer</h4>
+          <p class="footer-tagline">Small-batch coffee, cozy bites, good vibes.</p>
+        </div>
+        <div class="footer-column">
+          <h4 class="footer-heading">Visit Us</h4>
+          <ul class="footer-list">
+            <li>1219 Main Street<br>West Warwick, RI</li>
+            <li>Mon–Fri&nbsp;7:00&nbsp;AM&nbsp;–&nbsp;4:00&nbsp;PM</li>
+            <li>Sat&nbsp;8:00&nbsp;AM&nbsp;–&nbsp;4:00&nbsp;PM</li>
+            <li>Sun&nbsp;8:00&nbsp;AM&nbsp;–&nbsp;3:00&nbsp;PM</li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4 class="footer-heading">Stay Connected</h4>
+          <p class="footer-note">Follow along for specials, events, and daily pours.</p>
+          <div class="footer-social">
+            <a class="btn btn-lg btn-lg-square" href="https://www.instagram.com/them00dybrewer/?hl=en" target="_blank" rel="noopener" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom border-top mt-4 pt-3">
+        <p class="footer-bottom__copy mb-0">© 2025 The Moody Brewer • Crafted in Rhode Island</p>
+        <p class="footer-bottom__credit mb-0">Website by <a class="font-weight-bold" href="https://volatile-solutions.netlify.app/" target="_blank" rel="noopener">Volatile | Solutions</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+  <script src="lib/easing/easing.min.js"></script>
+  <script src="lib/waypoints/waypoints.min.js"></script>
+  <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+  <script src="lib/tempusdominus/js/moment.min.js"></script>
+  <script src="lib/tempusdominus/js/moment-timezone.min.js"></script>
+  <script src="lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
+  <script src="assets/js/mb-nav.js"></script>
+  <script>
+    (function() {
+      var PASS = 'brewmaster'; // basic front-end gate (not secure)
+      var $pass = document.getElementById('passcode');
+      var $unlock = document.getElementById('unlock');
+      var $locked = document.getElementById('lockedNotice');
+      var $form = document.getElementById('itemForm');
+      var $tbl = document.querySelector('#menuTable tbody');
+      var $saveBtn = document.getElementById('saveBtn');
+      var $resetBtn = document.getElementById('resetBtn');
+      var $exportBtn = document.getElementById('exportBtn');
+      var $importFile = document.getElementById('importFile');
+      var $clearBtn = document.getElementById('clearBtn');
+
+      var unlocked = false;
+      var API = '/api/menu';
+      var ADMIN_KEY = null;
+      var data = [];
+      lockUI(true);
+      refresh();
+
+      function lockUI(lock) {
+        unlocked = !lock;
+        Array.prototype.forEach.call(document.querySelectorAll('input, textarea, button, select'), function(el) {
+          if (el.id === 'passcode' || el.id === 'unlock') return;
+          el.disabled = lock;
+        });
+        $locked.style.display = lock ? 'block' : 'none';
+      }
+
+      $unlock.addEventListener('click', function() {
+        ADMIN_KEY = $pass.value.trim();
+        lockUI(false);
+      });
+
+      $form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var id = document.getElementById('fId').value;
+        var payload = {
+          category: document.getElementById('fCategory').value.trim(),
+          name: document.getElementById('fName').value.trim(),
+          description: document.getElementById('fDesc').value.trim(),
+          price: parseFloat(document.getElementById('fPrice').value)
+        };
+        try {
+          if (id) {
+            payload.id = Number(id);
+            await fetch(API, { method: 'PUT', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify(payload) });
+          } else {
+            await fetch(API, { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify(payload) });
+          }
+          resetForm();
+          await refresh();
+        } catch(err) { alert('Save failed'); }
+      });
+
+      $resetBtn.addEventListener('click', function(){ resetForm(); });
+
+      function editItem(id) {
+        var it = data.find(function(x){ return x.id === id; });
+        if (!it) return;
+        document.getElementById('fId').value = it.id;
+        document.getElementById('fCategory').value = it.category;
+        document.getElementById('fName').value = it.name;
+        document.getElementById('fDesc').value = it.description;
+        document.getElementById('fPrice').value = it.price;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      async function deleteItem(id) {
+        if (!confirm('Delete this item?')) return;
+        try {
+          await fetch(API, { method: 'DELETE', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify({ id: Number(id) }) });
+          await refresh();
+        } catch(err) { alert('Delete failed'); }
+      }
+
+      function resetForm() {
+        $form.reset();
+        document.getElementById('fId').value = '';
+      }
+
+      function render() {
+        $tbl.innerHTML = '';
+        if (!data.length) {
+          var tr = document.createElement('tr');
+          var td = document.createElement('td');
+          td.colSpan = 5; td.className = 'muted';
+          td.textContent = 'No items yet — add your first one on the right.';
+          tr.appendChild(td); $tbl.appendChild(tr); return;
+        }
+        var byCat = {};
+        data.forEach(function(it){ (byCat[it.category] = byCat[it.category] || []).push(it); });
+        Object.keys(byCat).sort().forEach(function(cat){
+          byCat[cat].forEach(function(it, i){
+            var tr = document.createElement('tr');
+            if (i === 0) {
+              var tdCat = document.createElement('td');
+              tdCat.textContent = cat;
+              tdCat.rowSpan = byCat[cat].length;
+              tr.appendChild(tdCat);
+            }
+            if (i > 0) tr.appendChild(document.createElement('td')); // filler for alignment in DOM creation
+            var tdName = document.createElement('td'); tdName.textContent = it.name; tr.appendChild(tdName);
+            var tdDesc = document.createElement('td'); tdDesc.textContent = it.desc; tr.appendChild(tdDesc);
+            var tdPrice = document.createElement('td'); tdPrice.textContent = '$' + Number(it.price).toFixed(2); tr.appendChild(tdPrice);
+            var tdAct = document.createElement('td'); tdAct.className = 'actions';
+            var eBtn = document.createElement('button'); eBtn.className = 'btn btn-sm btn-outline-primary'; eBtn.innerHTML = '<i class="fa fa-edit"></i>'; eBtn.onclick = function(){ editItem(it.id); };
+            var dBtn = document.createElement('button'); dBtn.className = 'btn btn-sm btn-outline-primary'; dBtn.innerHTML = '<i class="fa fa-trash"></i>'; dBtn.onclick = function(){ deleteItem(it.id); };
+            tdAct.appendChild(eBtn); tdAct.appendChild(dBtn); tr.appendChild(tdAct);
+            $tbl.appendChild(tr);
+          });
+        });
+      }
+
+      async function refresh(){
+        try {
+          var res = await fetch(API, { cache: 'no-cache' });
+          var json = await res.json();
+          data = json.items || [];
+          render();
+        } catch(err) { data = []; render(); }
+      }
+
+      $exportBtn.addEventListener('click', async function(){
+        try {
+          var res = await fetch(API, { cache: 'no-cache' });
+          var json = await res.json();
+          var blob = new Blob([JSON.stringify(json.items || [], null, 2)], {type:'application/json'});
+          var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'moody_menu.json'; a.click();
+          setTimeout(function(){ URL.revokeObjectURL(a.href); }, 500);
+        } catch(err) { alert('Export failed'); }
+      });
+
+      $importFile.addEventListener('change', async function(e){
+        var file = e.target.files[0]; if (!file) return;
+        var reader = new FileReader();
+        reader.onload = async function(){
+          try {
+            var list = JSON.parse(reader.result);
+            if (!Array.isArray(list)) throw new Error('Invalid JSON');
+            // naive import: clear all then insert
+            for (const it of data) {
+              await fetch(API, { method: 'DELETE', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify({ id: it.id }) });
+            }
+            for (const it of list) {
+              await fetch(API, { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify({
+                category: it.category,
+                name: it.name,
+                description: it.description,
+                price: it.price
+              }) });
+            }
+            await refresh();
+            alert('Import successful');
+          } catch(err){ alert('Invalid or failed import'); }
+        };
+        reader.readAsText(file);
+      });
+
+      $clearBtn.addEventListener('click', async function(){
+        if (!confirm('Clear all items?')) return;
+        try { for (const it of data) {
+          await fetch(API, { method: 'DELETE', headers: { 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }, body: JSON.stringify({ id: it.id }) });
+        } await refresh(); } catch(err) { alert('Clear failed'); }
+      });
+    })();
+  </script>
+</body>
+
+</html>
