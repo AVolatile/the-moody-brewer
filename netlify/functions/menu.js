@@ -18,8 +18,7 @@ const CATEGORY_SEED = [
   { slug: 'iced-favorites', title: 'Iced Favorites', layout: 'card', require_image: true, allow_multi_price: false, price_labels: [], order_index: 2 },
   { slug: 'hot-coffee', title: 'Hot Coffee', layout: 'table', require_image: false, allow_multi_price: true, price_labels: ['M', 'L'], order_index: 3 },
   { slug: 'iced-coffee', title: 'Iced Coffee', layout: 'table', require_image: false, allow_multi_price: true, price_labels: ['M', 'L'], order_index: 4 },
-  { slug: 'tea-drinks', title: 'Tea & Drinks', layout: 'table', require_image: false, allow_multi_price: true, price_labels: ['M', 'L'], order_index: 5 },
-  { slug: 'more-to-explore', title: 'More To Explore', layout: 'list', require_image: false, allow_multi_price: false, price_labels: ['Price'], order_index: 6 }
+  { slug: 'tea-drinks', title: 'Tea & Drinks', layout: 'table', require_image: false, allow_multi_price: true, price_labels: ['M', 'L'], order_index: 5 }
 ];
 
 function json(statusCode, bodyObj, extra = {}) {
@@ -53,6 +52,7 @@ async function ensureSchema() {
       price_single NUMERIC(10,2),
       price_medium NUMERIC(10,2),
       price_large NUMERIC(10,2),
+      image_path TEXT,
       image_data TEXT,
       image_mime TEXT,
       position INTEGER NOT NULL DEFAULT 0,
@@ -61,6 +61,7 @@ async function ensureSchema() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category_id);
+    ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_path TEXT;
   `);
 
   for (const cat of CATEGORY_SEED) {
@@ -121,6 +122,7 @@ function itemRowToJSON(row) {
     priceSingle: row.price_single != null ? Number(row.price_single) : null,
     priceMedium: row.price_medium != null ? Number(row.price_medium) : null,
     priceLarge: row.price_large != null ? Number(row.price_large) : null,
+    imagePath: row.image_path || null,
     imageData,
     position: row.position
   };
@@ -139,7 +141,7 @@ async function fetchMenuPayload() {
            i.price_single::float AS price_single,
            i.price_medium::float AS price_medium,
            i.price_large::float AS price_large,
-           i.image_data, i.image_mime, i.position,
+           i.image_path, i.image_data, i.image_mime, i.position,
            c.slug AS category_slug
     FROM menu_items i
     JOIN menu_categories c ON c.id = i.category_id
@@ -193,6 +195,66 @@ function validatePrices(catMeta, payload, existingItem) {
   return { priceSingle, priceMedium, priceLarge };
 }
 
+const DEFAULT_ITEMS = [
+  { categorySlug: 'signature', name: 'Caramel Matcha', description: 'Earthy matcha balanced with a ribbon of caramel.', priceSingle: 5.95, imagePath: 'assets/images/menuitems/caramel-matcha.JPG', position: 1 },
+  { categorySlug: 'signature', name: 'Coconut Cream Latte', description: 'Velvety coconut cream swirled into smooth espresso.', priceSingle: 5.75, imagePath: 'assets/images/menuitems/coconut-cream-latte.JPG', position: 2 },
+  { categorySlug: 'signature', name: 'Cotton Candy Latte', description: 'Playful sweetness with a creamy finish.', priceSingle: 5.50, imagePath: 'assets/images/menuitems/cotton-candy-latte.JPG', position: 3 },
+  { categorySlug: 'iced-favorites', name: 'Dubai Chocolate Latte', description: 'Chocolate with a warm cardamom kiss — decadent and smooth.', priceSingle: 5.95, imagePath: 'assets/images/menuitems/dubai-chocolate-latte.JPG', position: 1 },
+  { categorySlug: 'iced-favorites', name: 'Mango Latte', description: 'Sunny mango notes blended with creamy espresso.', priceSingle: 5.50, imagePath: 'assets/images/menuitems/mango-latte.JPG', position: 2 },
+  { categorySlug: 'iced-favorites', name: 'Strawberry Matcha', description: 'Bright strawberry layered with ceremonial matcha.', priceSingle: 5.75, imagePath: 'assets/images/menuitems/strawberry-matcha.JPG', position: 3 },
+  { categorySlug: 'hot-coffee', name: 'Espresso', description: 'Medium roast espresso *Double Shot*', priceMedium: 4.00, priceLarge: 4.99, position: 1 },
+  { categorySlug: 'hot-coffee', name: 'Cappuccino', description: 'Espresso, steamed milk & foam', priceMedium: 4.75, priceLarge: 4.99, position: 2 },
+  { categorySlug: 'hot-coffee', name: 'Cafe Mocha', description: 'Espresso, steamed milk & chocolate syrup', priceMedium: 4.99, priceLarge: 5.25, position: 3 },
+  { categorySlug: 'hot-coffee', name: 'Cafe Latte', description: 'Espresso, steamed milk and foam', priceMedium: 4.75, priceLarge: 4.99, position: 4 },
+  { categorySlug: 'hot-coffee', name: 'Americano', description: 'Espresso & hot water', priceMedium: 4.25, priceLarge: null, position: 5 },
+  { categorySlug: 'hot-coffee', name: 'Matcha Latte', description: 'Matcha powder & steamed milk', priceMedium: 4.75, priceLarge: 4.99, position: 6 },
+  { categorySlug: 'hot-coffee', name: 'Chai Latte', description: 'Chai powder and steamed milk', priceMedium: 4.99, priceLarge: 5.25, position: 7 },
+  { categorySlug: 'hot-coffee', name: 'Turmeric Latte', description: 'Turmeric and steamed milk', priceMedium: 3.95, priceLarge: 4.25, position: 8 },
+  { categorySlug: 'hot-coffee', name: 'Drip Coffee', description: 'New Harvest Medium Roast', priceMedium: 3.25, priceLarge: 3.75, position: 9 },
+  { categorySlug: 'hot-coffee', name: 'Cafe Au Lait', description: 'Coffee and steamed milk', priceMedium: 3.75, priceLarge: 3.95, position: 10 },
+  { categorySlug: 'hot-coffee', name: 'Hot Chocolate', description: 'Chocolate syrup and steamed milk', priceMedium: 4.50, priceLarge: 4.75, position: 11 },
+  { categorySlug: 'hot-coffee', name: 'Dirty Turmeric Latte', description: 'Espresso w/ turmeric and steamed milk', priceMedium: 5.50, priceLarge: 5.95, position: 12 },
+  { categorySlug: 'hot-coffee', name: 'Dirty Chai Latte', description: 'Shot of espresso on Chai Latte', priceMedium: 4.95, priceLarge: 5.25, position: 13 },
+  { categorySlug: 'iced-coffee', name: 'Iced Chocolate', description: 'Chocolate powder and milk', priceMedium: 4.75, priceLarge: 5.25, position: 1 },
+  { categorySlug: 'iced-coffee', name: 'Iced Cappuccino', description: 'Espresso, milk & foam', priceMedium: 4.75, priceLarge: 4.99, position: 2 },
+  { categorySlug: 'iced-coffee', name: 'Iced Mocha', description: 'Espresso, milk & chocolate syrup', priceMedium: 4.99, priceLarge: 5.25, position: 3 },
+  { categorySlug: 'iced-coffee', name: 'Iced Latte', description: 'Espresso and milk', priceMedium: 4.75, priceLarge: 4.99, position: 4 },
+  { categorySlug: 'iced-coffee', name: 'Iced Americano', description: 'Espresso and cold water', priceMedium: 4.25, priceLarge: null, position: 5 },
+  { categorySlug: 'iced-coffee', name: 'Iced Matcha', description: 'Matcha powder & milk', priceMedium: 4.75, priceLarge: 4.99, position: 6 },
+  { categorySlug: 'iced-coffee', name: 'Iced Chai Latte', description: 'Chai powder and milk', priceMedium: 4.99, priceLarge: 5.25, position: 7 },
+  { categorySlug: 'iced-coffee', name: 'Iced Coffee', description: 'Cold brew blend', priceMedium: 3.50, priceLarge: 3.75, position: 8 },
+  { categorySlug: 'tea-drinks', name: 'Hot Tea', description: null, priceMedium: 3.50, priceLarge: 3.95, position: 1 },
+  { categorySlug: 'tea-drinks', name: 'Herbal Tea / Butterfly Tea', description: null, priceMedium: 3.50, priceLarge: 3.95, position: 2 },
+  { categorySlug: 'tea-drinks', name: 'Iced Tea', description: null, priceMedium: 3.50, priceLarge: 3.95, position: 3 },
+  { categorySlug: 'tea-drinks', name: 'Herbal Tea / Butterfly Tea (Iced)', description: null, priceMedium: 3.95, priceLarge: 4.50, position: 4 },
+  { categorySlug: 'tea-drinks', name: 'Black Lemon Tea', description: null, priceMedium: 3.95, priceLarge: 4.50, position: 5 },
+  { categorySlug: 'tea-drinks', name: 'London Fog', description: 'Earl grey tea with vanilla syrup and steamed milk', priceMedium: 3.95, priceLarge: 4.50, position: 6 },
+  { categorySlug: 'tea-drinks', name: 'Arnold Palmer', description: 'Iced black tea and lemonade', priceMedium: 4.25, priceLarge: 4.75, position: 7 }
+];
+
+async function seedDefaultItems(categoryMap) {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM menu_items');
+  if (rows[0].count > 0) return;
+  for (const item of DEFAULT_ITEMS) {
+    const catMeta = categoryMap.get(item.categorySlug);
+    if (!catMeta) continue;
+    await pool.query(
+      `INSERT INTO menu_items (category_id, name, description, price_single, price_medium, price_large, image_path, position)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        catMeta.id,
+        item.name,
+        item.description || null,
+        item.priceSingle != null ? item.priceSingle : null,
+        item.priceMedium != null ? item.priceMedium : null,
+        item.priceLarge != null ? item.priceLarge : null,
+        item.imagePath || null,
+        item.position || 0
+      ]
+    );
+  }
+}
+
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: CORS_HEADERS, body: '' };
@@ -205,6 +267,7 @@ exports.handler = async function(event) {
 
     await ensureSchema();
     const { list: categories, map: categoryMap } = await loadCategories();
+    await seedDefaultItems(categoryMap);
 
     if (event.httpMethod === 'GET') {
       const payload = await fetchMenuPayload();
@@ -244,7 +307,7 @@ exports.handler = async function(event) {
       const insertSQL = `
         INSERT INTO menu_items (category_id, name, description, price_single, price_medium, price_large, image_data, image_mime, position)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-        RETURNING id, name, description, price_single::float AS price_single, price_medium::float AS price_medium, price_large::float AS price_large, image_data, image_mime, position
+        RETURNING id, name, description, price_single::float AS price_single, price_medium::float AS price_medium, price_large::float AS price_large, image_path, image_data, image_mime, position
       `;
 
       const values = [
@@ -272,7 +335,7 @@ exports.handler = async function(event) {
 
       const itemRes = await pool.query(`
         SELECT i.id, i.category_id, c.slug AS category_slug, c.require_image, c.allow_multi_price, c.layout,
-               i.image_data, i.image_mime,
+               i.image_path, i.image_data, i.image_mime,
                i.price_single::float AS price_single,
                i.price_medium::float AS price_medium,
                i.price_large::float AS price_large
@@ -294,14 +357,6 @@ exports.handler = async function(event) {
         const { rows: newPosRows } = await pool.query('SELECT COALESCE(MAX(position), 0) + 1 AS next FROM menu_items WHERE category_id = $1', [newCategoryId]);
         positionOverride = newPosRows[0].next || 1;
       }
-
-      const metaForValidation = {
-        layout: catMeta.layout,
-        allowMultiPrice: catMeta.allowMultiPrice,
-        priceSingle,
-        priceMedium,
-        priceLarge
-      };
 
       const priceInfo = validatePrices(catMeta, payload, current);
 
@@ -350,6 +405,8 @@ exports.handler = async function(event) {
         values.push(imageParts ? imageParts.data : null);
         fields.push(`image_mime = $${i++}`);
         values.push(imageParts ? imageParts.mime : null);
+        fields.push(`image_path = $${i++}`);
+        values.push(imageParts ? null : null);
       }
 
       if (!fields.length) return json(400, { error: 'No fields to update' });
@@ -362,7 +419,7 @@ exports.handler = async function(event) {
       fields.push(`updated_at = NOW()`);
       values.push(id);
 
-      const sql = `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, name, description, price_single::float AS price_single, price_medium::float AS price_medium, price_large::float AS price_large, image_data, image_mime, position`;
+      const sql = `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${i} RETURNING id, name, description, price_single::float AS price_single, price_medium::float AS price_medium, price_large::float AS price_large, image_path, image_data, image_mime, position`;
       const { rows } = await pool.query(sql, values);
       if (!rows.length) return json(404, { error: 'Not found' });
       const itemRow = rows[0];

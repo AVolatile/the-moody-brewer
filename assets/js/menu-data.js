@@ -35,10 +35,11 @@
 
       var colMedia = document.createElement('div');
       colMedia.className = 'col-4 col-sm-3 d-flex flex-column align-items-center';
-      if (item.imageData) {
+      var imgSrc = item.imageData || item.imagePath || '';
+      if (imgSrc) {
         var img = document.createElement('img');
         img.className = 'w-100 rounded-circle mb-3 mb-sm-0';
-        img.src = item.imageData;
+        img.src = imgSrc;
         img.alt = item.name || '';
         colMedia.appendChild(img);
       } else {
@@ -53,7 +54,7 @@
       }
       var price = document.createElement('h5');
       price.className = 'menu-price mt-2';
-      price.textContent = money(item.priceSingle);
+      price.textContent = money(item.priceSingle != null ? item.priceSingle : (item.priceMedium != null ? item.priceMedium : item.priceLarge));
       colMedia.appendChild(price);
 
       var colBody = document.createElement('div');

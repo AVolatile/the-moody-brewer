@@ -186,6 +186,7 @@
         items: [],
         editingId: null,
         imageData: null,
+        currentImagePath: null,
         imageChanged: false,
         removeImage: false
       };
@@ -263,6 +264,7 @@
         var singleLabel = (cat.priceLabels && cat.priceLabels[0]) ? cat.priceLabels[0] : 'Price';
         $singleLabel.textContent = singleLabel;
         if (cat.allowMultiPrice) {
+          $singleGroup.classList.add('d-none');
           var mediumLabel = (cat.priceLabels && cat.priceLabels[0]) ? cat.priceLabels[0] : 'M';
           var largeLabel = (cat.priceLabels && cat.priceLabels[1]) ? cat.priceLabels[1] : 'L';
           $mediumLabel.textContent = mediumLabel;
@@ -271,6 +273,7 @@
           $largeGroup.classList.remove('d-none');
           $priceSingle.required = false;
         } else {
+          $singleGroup.classList.remove('d-none');
           $mediumGroup.classList.add('d-none');
           $largeGroup.classList.add('d-none');
           $priceMedium.value = '';
@@ -281,12 +284,24 @@
           $imageGroup.classList.remove('d-none');
         } else {
           $imageGroup.classList.add('d-none');
-          clearImage(false);
+          if (!state.imageChanged) {
+            clearImage(true);
+          }
+        }
+        if ($removeImageBtn) {
+          if (cat.requireImage) {
+            $removeImageBtn.classList.add('d-none');
+          } else if (state.imageData || state.currentImagePath) {
+            $removeImageBtn.classList.remove('d-none');
+          } else {
+            $removeImageBtn.classList.add('d-none');
+          }
         }
       }
 
       function clearImage(clearFileInput) {
         state.imageData = null;
+        state.currentImagePath = null;
         state.imageChanged = false;
         state.removeImage = false;
         if ($imagePreview) {
@@ -304,11 +319,12 @@
         }
       }
 
-      function setImagePreview(dataUrl) {
+      function setImagePreview(src) {
         if (!$imagePreview) return;
-        $imagePreview.src = dataUrl;
+        $imagePreview.src = src;
         $imagePreview.classList.remove('d-none');
-        if ($removeImageBtn) {
+        var cat = getCategoryMeta($category.value);
+        if ($removeImageBtn && cat && !cat.requireImage) {
           $removeImageBtn.classList.remove('d-none');
         }
       }
@@ -366,7 +382,7 @@
               '<td class="align-middle font-weight-bold">' + item.name + '</td>' +
               '<td class="align-middle">' + (item.description || '') + '</td>' +
               '<td class="align-middle">' + formatPricing(cat, item) + '</td>' +
-              '<td class="align-middle">' + (item.imageData ? '<span class="badge badge-success">Image</span>' : '-') + '</td>' +
+              '<td class="align-middle">' + ((item.imageData || item.imagePath) ? '<span class="badge badge-success">Image</span>' : '-') + '</td>' +
               '<td class="align-middle text-nowrap"></td>';
             var actionCell = tr.lastChild;
             var editBtn = document.createElement('button');
@@ -396,6 +412,7 @@
         state.imageChanged = false;
         state.removeImage = false;
         state.imageData = item.imageData || null;
+        state.currentImagePath = item.imagePath || null;
         $category.value = item.categorySlug;
         applyCategoryUI(item.categorySlug);
         $name.value = item.name || '';
@@ -405,6 +422,8 @@
         $priceLarge.value = item.priceLarge != null ? item.priceLarge : '';
         if (item.imageData) {
           setImagePreview(item.imageData);
+        } else if (item.imagePath) {
+          setImagePreview(item.imagePath);
         } else {
           clearImage(true);
         }
@@ -486,7 +505,15 @@
       $imageInput.addEventListener('change', function() {
         var file = this.files[0];
         if (!file) {
-          clearImage(false);
+          if (state.imageChanged) {
+            clearImage(false);
+          } else if (state.currentImagePath) {
+            setImagePreview(state.currentImagePath);
+          } else if (state.imageData) {
+            setImagePreview(state.imageData);
+          } else {
+            clearImage(false);
+          }
           return;
         }
         if ($imageLabel) {
@@ -495,6 +522,7 @@
         var reader = new FileReader();
         reader.onloadend = function() {
           state.imageData = reader.result;
+          state.currentImagePath = null;
           state.imageChanged = true;
           state.removeImage = false;
           setImagePreview(state.imageData);
