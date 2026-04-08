@@ -9,7 +9,7 @@ exports.handler = async function handler(event) {
   }
 
   if (event.httpMethod !== 'GET') {
-    return json(405, { error: 'Legacy menu endpoint is read-only. Use the admin endpoints for content management.' });
+    return json(405, { error: 'Method not allowed.' });
   }
 
   try {

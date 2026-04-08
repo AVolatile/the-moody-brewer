@@ -9,3 +9,44 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/content"
+  to = "/.netlify/functions/content"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/auth"
+  to = "/.netlify/functions/admin-auth"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/content"
+  to = "/.netlify/functions/admin-content"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/categories"
+  to = "/.netlify/functions/admin-categories"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/menu-items"
+  to = "/.netlify/functions/admin-menu-items"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/featured-items"
+  to = "/.netlify/functions/admin-featured-items"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/promotions"
+  to = "/.netlify/functions/admin-promotions"
+  status = 200
+  force = true

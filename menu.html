@@ -25,6 +25,24 @@
     <!-- Customized Bootstrap Stylesheet -->
     <link href="css/style.min.css" rel="stylesheet">
 <link rel="stylesheet" href="./assets/css/theme.css">
+<style>
+  /* ── Menu skeleton loading animation ── */
+  @keyframes mb-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .skeleton-circle,
+  .skeleton-line {
+    background: linear-gradient(90deg, rgba(0,0,0,.06) 25%, rgba(0,0,0,.11) 50%, rgba(0,0,0,.06) 75%);
+    background-size: 400px 100%;
+    animation: mb-shimmer 1.4s ease-in-out infinite;
+    border-radius: 4px;
+  }
+  .skeleton-circle  { width: 100%; padding-top: 100%; border-radius: 50%; }
+  .skeleton-title   { height: 18px; width: 70%; }
+  .skeleton-desc    { height: 14px; width: 90%; }
+  .skeleton-price   { height: 16px; width: 55%; }
+</style>
 <link rel="icon" href="./assets/images/favicon.ico" sizes="any">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="description" content="Moody Brewer — specialty coffee, curated bites, and good vibes.">
@@ -85,363 +103,10 @@
     <div class="container-fluid pt-5 section-light after-header-white">
         <div class="container">
             <div class="section-title">
-                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu & Pricing</h4>
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu &amp; Pricing</h4>
                 <h1 class="display-4">Competitive Pricing</h1>
             </div>
-            <div class="row">
-                <div class="col-lg-6">
-                    <h1 class="mb-5">Signature Drinks</h1>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/caramel-matcha.JPG" alt="Caramel Matcha">
-                                    <h5 class="menu-price mt-2">$5.95</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Caramel Matcha</h4>
-                                    <p class="m-0">Earthy matcha balanced with a ribbon of caramel.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/coconut-cream-latte.JPG" alt="Coconut Cream Latte">
-                                    <h5 class="menu-price mt-2">$5.75</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Coconut Cream Latte</h4>
-                                    <p class="m-0">Velvety coconut cream swirled into smooth espresso.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/cotton-candy-latte.JPG" alt="Cotton Candy Latte">
-                                    <h5 class="menu-price mt-2">$5.50</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Cotton Candy Latte</h4>
-                                    <p class="m-0">Playful sweetness with a creamy finish.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <h1 class="mb-5">Iced Favorites</h1>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/dubai-chocolate-latte.JPG" alt="Dubai Chocolate Latte">
-                                    <h5 class="menu-price mt-2">$5.95</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Dubai Chocolate Latte</h4>
-                                    <p class="m-0">Chocolate with a warm cardamom kiss &mdash; decadent and smooth.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/mango-latte.JPG" alt="Mango Latte">
-                                    <h5 class="menu-price mt-2">$5.50</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Mango Latte</h4>
-                                    <p class="m-0">Sunny mango notes blended with creamy espresso.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="row align-items-center mb-5">
-                                <div class="col-4 col-sm-3 d-flex flex-column align-items-center">
-                                    <img class="w-100 rounded-circle mb-3 mb-sm-0" src="assets/images/menuitems/strawberry-matcha.JPG" alt="Strawberry Matcha">
-                                    <h5 class="menu-price mt-2">$5.75</h5>
-                                </div>
-                                <div class="col-8 col-sm-9">
-                                    <h4>Strawberry Matcha</h4>
-                                    <p class="m-0">Bright strawberry layered with ceremonial matcha.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 mt-5">
-                    <!-- Full Menu Listing -->
-                    <div class="menu-section">
-                        <h1 class="mb-3">Hot Coffee</h1>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Drink</th>
-                                        <th scope="col" class="text-right">M</th>
-                                        <th scope="col" class="text-right">L</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Espresso</div>
-                                            <small class="text-muted d-block">Medium roast espresso <em>Double Shot</em></small>
-                                        </td>
-                                        <td class="text-right">$4.00</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Cappuccino</div>
-                                            <small class="text-muted d-block">Espresso, steamed milk &amp; foam</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Cafe Mocha</div>
-                                            <small class="text-muted d-block">Espresso, steamed milk &amp; chocolate syrup</small>
-                                        </td>
-                                        <td class="text-right">$4.99</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Cafe Latte</div>
-                                            <small class="text-muted d-block">Espresso, steamed milk and foam</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Americano</div>
-                                            <small class="text-muted d-block">Espresso &amp; hot water</small>
-                                        </td>
-                                        <td class="text-right">$4.25</td>
-                                        <td class="text-right">—</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Matcha Latte</div>
-                                            <small class="text-muted d-block">Matcha powder &amp; steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Chai Latte</div>
-                                            <small class="text-muted d-block">Chai powder and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$4.99</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Turmeric Latte</div>
-                                            <small class="text-muted d-block">Turmeric and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$3.95</td>
-                                        <td class="text-right">$4.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Drip Coffee</div>
-                                            <small class="text-muted d-block">New Harvest Medium Roast</small>
-                                        </td>
-                                        <td class="text-right">$3.25</td>
-                                        <td class="text-right">$3.75</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Cafe Au Lait</div>
-                                            <small class="text-muted d-block">Coffee and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$3.75</td>
-                                        <td class="text-right">$3.95</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Hot Chocolate</div>
-                                            <small class="text-muted d-block">Chocolate syrup and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$4.50</td>
-                                        <td class="text-right">$4.75</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Dirty Turmeric Latte</div>
-                                            <small class="text-muted d-block">Espresso w/ turmeric and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$5.50</td>
-                                        <td class="text-right">$5.95</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Dirty Chai Latte</div>
-                                            <small class="text-muted d-block">Shot of espresso on Chai Latte</small>
-                                        </td>
-                                        <td class="text-right">$4.95</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="menu-section mt-5">
-                        <h1 class="mb-3">Iced Coffee</h1>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Drink</th>
-                                        <th scope="col" class="text-right">M</th>
-                                        <th scope="col" class="text-right">L</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Chocolate</div>
-                                            <small class="text-muted d-block">Chocolate powder and milk</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Cappuccino</div>
-                                            <small class="text-muted d-block">Espresso, milk &amp; foam</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Mocha</div>
-                                            <small class="text-muted d-block">Espresso, milk &amp; chocolate syrup</small>
-                                        </td>
-                                        <td class="text-right">$4.99</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Latte</div>
-                                            <small class="text-muted d-block">Espresso and milk</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Americano</div>
-                                            <small class="text-muted d-block">Espresso and cold water</small>
-                                        </td>
-                                        <td class="text-right">$4.25</td>
-                                        <td class="text-right">—</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Matcha</div>
-                                            <small class="text-muted d-block">Matcha powder &amp; milk</small>
-                                        </td>
-                                        <td class="text-right">$4.75</td>
-                                        <td class="text-right">$4.99</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Chai Latte</div>
-                                            <small class="text-muted d-block">Chai powder and milk</small>
-                                        </td>
-                                        <td class="text-right">$4.99</td>
-                                        <td class="text-right">$5.25</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Coffee</div>
-                                            <small class="text-muted d-block">Cold brew blend</small>
-                                        </td>
-                                        <td class="text-right">$3.50</td>
-                                        <td class="text-right">$3.75</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="menu-section mt-5">
-                        <h1 class="mb-3">Tea &amp; Drinks</h1>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Drink</th>
-                                        <th scope="col" class="text-right">M</th>
-                                        <th scope="col" class="text-right">L</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Hot Tea</div>
-                                        </td>
-                                        <td class="text-right">$3.50</td>
-                                        <td class="text-right">$3.95</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Herbal Tea / Butterfly Tea</div>
-                                        </td>
-                                        <td class="text-right">$3.50</td>
-                                        <td class="text-right">$3.95</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Iced Tea</div>
-                                        </td>
-                                        <td class="text-right">$3.50</td>
-                                        <td class="text-right">$3.95</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Herbal Tea / Butterfly Tea (Iced)</div>
-                                        </td>
-                                        <td class="text-right">$3.95</td>
-                                        <td class="text-right">$4.50</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Black Lemon Tea</div>
-                                        </td>
-                                        <td class="text-right">$3.95</td>
-                                        <td class="text-right">$4.50</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">London Fog</div>
-                                            <small class="text-muted d-block">Earl grey tea with vanilla syrup and steamed milk</small>
-                                        </td>
-                                        <td class="text-right">$3.95</td>
-                                        <td class="text-right">$4.50</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="font-weight-bold">Arnold Palmer</div>
-                                            <small class="text-muted d-block">Iced black tea and lemonade</small>
-                                        </td>
-                                        <td class="text-right">$4.25</td>
-                                        <td class="text-right">$4.75</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div id="menu-content-root" class="menu-catalog"></div>
         </div>
     </div>
     <!-- Menu End -->
@@ -496,6 +161,8 @@
     <!-- Template Javascript -->
     <script src="js/main.js"></script>
     <script src="./assets/js/mb-nav.js"></script>
+    <!-- Dynamic menu from Neon database -->
+    <script src="./assets/js/menu-data.js"></script>
 </body>
 
 </html>

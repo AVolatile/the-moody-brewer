@@ -25,6 +25,24 @@
     <!-- Customized Bootstrap Stylesheet -->
     <link href="css/style.min.css" rel="stylesheet">
 <link rel="stylesheet" href="./assets/css/theme.css">
+<style>
+  /* ── Menu skeleton loading animation ── */
+  @keyframes mb-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .skeleton-circle,
+  .skeleton-line {
+    background: linear-gradient(90deg, rgba(0,0,0,.06) 25%, rgba(0,0,0,.11) 50%, rgba(0,0,0,.06) 75%);
+    background-size: 400px 100%;
+    animation: mb-shimmer 1.4s ease-in-out infinite;
+    border-radius: 4px;
+  }
+  .skeleton-circle  { width: 100%; padding-top: 100%; border-radius: 50%; }
+  .skeleton-title   { height: 18px; width: 70%; }
+  .skeleton-desc    { height: 14px; width: 90%; }
+  .skeleton-price   { height: 16px; width: 55%; }
+</style>
 <link rel="icon" href="./assets/images/favicon.ico" sizes="any">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="description" content="Moody Brewer — specialty coffee, curated bites, and good vibes.">
@@ -186,77 +204,11 @@
     <div class="container-fluid pt-5 section-light">
         <div class="container">
             <div class="section-title">
-                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu & Pricing</h4>
-                <h1 class="display-4">Signature Offers</h1>
+                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu &amp; Pricing</h4>
+                <h1 class="display-4">What&rsquo;s Brewing Now</h1>
             </div>
-            <div class="row">
-                <div class="col-lg-6">
-                    <h1 class="mb-5">Signature Drinks</h1>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/caramel-matcha.JPG" alt="Caramel Matcha">
-                            <h5 class="menu-price">$5.95</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Caramel Matcha</h4>
-                            <p class="m-0">Earthy matcha balanced with a ribbon of caramel.</p>
-                        </div>
-                    </div>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/coconut-cream-latte.JPG" alt="Coconut Cream Latte">
-                            <h5 class="menu-price">$5.75</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Coconut Cream Latte</h4>
-                            <p class="m-0">Velvety coconut cream swirled into smooth espresso.</p>
-                        </div>
-                    </div>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/cotton-candy-latte.JPG" alt="Cotton Candy Latte">
-                            <h5 class="menu-price">$5.50</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Cotton Candy Latte</h4>
-                            <p class="m-0">Playful sweetness with a creamy finish.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <h1 class="mb-5">Iced Favorites</h1>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/dubai-chocolate-latte.JPG" alt="Dubai Chocolate Latte">
-                            <h5 class="menu-price">$5.95</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Dubai Chocolate Latte</h4>
-                            <p class="m-0">Chocolate with a warm cardamom kiss — decadent and smooth.</p>
-                        </div>
-                    </div>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/mango-latte.JPG" alt="Mango Latte">
-                            <h5 class="menu-price">$5.50</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Mango Latte</h4>
-                            <p class="m-0">Sunny mango notes blended with creamy espresso.</p>
-                        </div>
-                    </div>
-                    <div class="row align-items-center mb-5">
-                        <div class="col-4 col-sm-3">
-                            <img class="w-100 rounded-circle mb-3 mb-sm-0" src="./assets/images/menuitems/strawberry-matcha.JPG" alt="Strawberry Matcha">
-                            <h5 class="menu-price">$5.75</h5>
-                        </div>
-                        <div class="col-8 col-sm-9">
-                            <h4>Strawberry Matcha</h4>
-                            <p class="m-0">Bright strawberry layered with ceremonial matcha.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div id="home-promotions" class="promo-strip"></div>
+            <div id="homepage-featured-root" class="featured-showcase-grid"></div>
         </div>
     </div>
     <!-- Menu End -->
@@ -424,6 +376,8 @@
     <script src="js/main.js"></script>
     <script src="./assets/js/live-reviews.js"></script>
     <script src="./assets/js/mb-nav.js"></script>
+    <!-- Dynamic menu from Neon database -->
+    <script src="./assets/js/menu-data.js"></script>
 </body>
 
 </html>

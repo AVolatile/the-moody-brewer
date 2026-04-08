@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "admin:hash": "node scripts/hash-admin-password.mjs"
+  },
   "dependencies": {
     "@netlify/neon": "^0.1.0",
     "pg": "^8.11.5"
