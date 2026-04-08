@@ -4,6 +4,12 @@
   node_version = "18"
 
 [[redirects]]
+  from = "/admin"
+  to = "/admin/"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/api/menu"
   to = "/.netlify/functions/menu"
   status = 200
