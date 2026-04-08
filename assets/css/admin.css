@@ -64,6 +64,44 @@ body {
 .login-card h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
 .login-card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
 
+.login-diagnostics {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.login-diagnostic {
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.login-diagnostic strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.login-diagnostic.error {
+  background: var(--danger-light);
+  color: #7d2727;
+}
+
+.login-diagnostic.warn {
+  background: #fff6e6;
+  color: #8a5b00;
+}
+
+.login-diagnostic ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .login-input-wrap { position: relative; margin-bottom: 16px; }
 .login-input-wrap i {
   position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
@@ -77,6 +115,21 @@ body {
   outline: none;
 }
 .login-input-wrap input:focus { border-color: var(--accent); }
+.login-input-wrap input.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(224,82,82,.12);
+}
+.login-input-wrap input.is-invalid:focus {
+  border-color: var(--danger);
+}
+.login-field-error {
+  color: var(--danger);
+  font-size: 12px;
+  text-align: left;
+  margin: -8px 0 12px;
+  display: none;
+}
+.login-field-error.show { display: block; }
 
 .btn-login {
   width: 100%; padding: 13px;
@@ -88,8 +141,17 @@ body {
 }
 .btn-login:hover { background: var(--accent-dark); }
 .btn-login:active { transform: scale(.98); }
+.btn-login:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+}
 .login-error {
-  color: var(--danger); font-size: 13px; margin-top: 10px;
+  color: #7d2727; font-size: 13px; margin-top: 10px;
+  text-align: left;
+  background: var(--danger-light);
+  border: 1px solid rgba(224,82,82,.18);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
   display: none;
 }
 .login-error.show { display: block; }

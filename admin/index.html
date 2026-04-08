@@ -22,16 +22,37 @@
         <h2>Client Admin</h2>
         <p id="loginMessage">Sign in to manage the live menu, featured items, and promotions.</p>
         <form id="loginForm">
+          <div class="login-diagnostics" id="loginDiagnostics" hidden></div>
           <div class="login-input-wrap">
             <i class="fa fa-user"></i>
-            <input id="loginUsername" type="text" autocomplete="username" placeholder="Username" />
+            <input
+              id="loginUsername"
+              name="username"
+              type="text"
+              autocomplete="username"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Username"
+              aria-describedby="loginUsernameError"
+              required
+            />
           </div>
+          <div class="login-field-error" id="loginUsernameError" aria-live="polite"></div>
           <div class="login-input-wrap">
             <i class="fa fa-lock"></i>
-            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password" />
+            <input
+              id="loginPassword"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Password"
+              aria-describedby="loginPasswordError"
+              required
+            />
           </div>
-          <button class="btn-login" type="submit">Sign In</button>
-          <div class="login-error" id="loginError"></div>
+          <div class="login-field-error" id="loginPasswordError" aria-live="polite"></div>
+          <button class="btn-login" id="loginSubmitBtn" type="submit">Sign In</button>
+          <div class="login-error" id="loginError" role="alert"></div>
         </form>
       </div>
     </div>

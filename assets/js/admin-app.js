@@ -6,7 +6,8 @@
       configured: true,
       authenticated: false,
       requiredUsername: 'admin',
-      username: null
+      username: null,
+      diagnostics: null
     },
     snapshot: {
       dashboard: {
@@ -36,6 +37,10 @@
     loginForm: document.getElementById('loginForm'),
     loginUsername: document.getElementById('loginUsername'),
     loginPassword: document.getElementById('loginPassword'),
+    loginUsernameError: document.getElementById('loginUsernameError'),
+    loginPasswordError: document.getElementById('loginPasswordError'),
+    loginDiagnostics: document.getElementById('loginDiagnostics'),
+    loginSubmitBtn: document.getElementById('loginSubmitBtn'),
     loginError: document.getElementById('loginError'),
     loginMessage: document.getElementById('loginMessage'),
     appShell: document.getElementById('appShell'),
@@ -127,6 +132,163 @@
     setTimeout(closeToast, 4200);
   }
 
+  function buildRequestError(message, status, body) {
+    var error = new Error(message);
+    error.status = status;
+    error.details = body && body.details ? body.details : null;
+    error.body = body || null;
+    return error;
+  }
+
+  function setLoginFieldState(input, errorNode, message) {
+    var hasMessage = Boolean(message);
+    input.classList.toggle('is-invalid', hasMessage);
+    input.setAttribute('aria-invalid', hasMessage ? 'true' : 'false');
+    errorNode.textContent = hasMessage ? message : '';
+    errorNode.classList.toggle('show', hasMessage);
+  }
+
+  function clearLoginFieldErrors() {
+    setLoginFieldState(refs.loginUsername, refs.loginUsernameError, '');
+    setLoginFieldState(refs.loginPassword, refs.loginPasswordError, '');
+  }
+
+  function applyLoginFieldErrors(fields) {
+    fields = fields || {};
+    setLoginFieldState(refs.loginUsername, refs.loginUsernameError, fields.username || '');
+    setLoginFieldState(refs.loginPassword, refs.loginPasswordError, fields.password || '');
+    return Boolean(fields.username || fields.password);
+  }
+
+  function clearLoginError() {
+    refs.loginError.textContent = '';
+    refs.loginError.classList.remove('show');
+  }
+
+  function showLoginError(message) {
+    refs.loginError.textContent = message || '';
+    refs.loginError.classList.toggle('show', Boolean(message));
+  }
+
+  function loginDiagnosticMarkup(tone, title, items) {
+    if (!items || !items.length) return '';
+
+    return [
+      '<section class="login-diagnostic ', escapeHtml(tone), '">',
+        '<strong>', escapeHtml(title), '</strong>',
+        '<ul>',
+          items.map(function(item) {
+            return '<li>' + escapeHtml(item) + '</li>';
+          }).join(''),
+        '</ul>',
+      '</section>'
+    ].join('');
+  }
+
+  function renderLoginDiagnostics(diagnostics) {
+    var sections = [];
+
+    if (diagnostics && diagnostics.auth) {
+      if (diagnostics.auth.missing && diagnostics.auth.missing.length) {
+        sections.push(loginDiagnosticMarkup('error', 'Missing Admin Setup', diagnostics.auth.missing));
+      }
+      if (diagnostics.auth.warnings && diagnostics.auth.warnings.length) {
+        sections.push(loginDiagnosticMarkup('warn', 'Auth Warnings', diagnostics.auth.warnings));
+      }
+    }
+
+    if (diagnostics && diagnostics.database && !diagnostics.database.configured) {
+      var databaseItems = [];
+      if (diagnostics.database.missing && diagnostics.database.missing.length) {
+        databaseItems = databaseItems.concat(diagnostics.database.missing);
+      } else {
+        databaseItems.push('Add a Neon connection string before loading the dashboard.');
+      }
+      if (diagnostics.database.acceptedVariables && diagnostics.database.acceptedVariables.length) {
+        databaseItems.push('Accepted variable names: ' + diagnostics.database.acceptedVariables.join(', '));
+      }
+      sections.push(loginDiagnosticMarkup('error', 'Database Setup Needed', databaseItems));
+    }
+
+    refs.loginDiagnostics.innerHTML = sections.join('');
+    refs.loginDiagnostics.hidden = !sections.length;
+  }
+
+  function syncLoginSetupState() {
+    var diagnostics = state.auth && state.auth.diagnostics ? state.auth.diagnostics : null;
+
+    renderLoginDiagnostics(diagnostics);
+
+    if (!state.auth.configured) {
+      refs.loginMessage.textContent = 'Admin sign-in is not fully configured yet.';
+      refs.loginSubmitBtn.disabled = true;
+      return;
+    }
+
+    refs.loginSubmitBtn.disabled = false;
+
+    if (diagnostics && diagnostics.database && !diagnostics.database.configured) {
+      refs.loginMessage.textContent = 'Credentials can be checked, but the dashboard cannot load until the Neon database connection is configured.';
+      return;
+    }
+
+    refs.loginMessage.textContent = 'Sign in to manage the live menu, featured items, and promotions.';
+  }
+
+  function setLoginSubmitting(isLoading) {
+    setLoading(refs.loginSubmitBtn, isLoading);
+    if (!isLoading && !state.auth.configured) {
+      refs.loginSubmitBtn.disabled = true;
+    }
+  }
+
+  function validateLoginFields() {
+    var fieldErrors = {};
+
+    if (!refs.loginUsername.value.trim()) {
+      fieldErrors.username = 'Enter the admin username.';
+    }
+    if (!refs.loginPassword.value.trim()) {
+      fieldErrors.password = 'Enter the admin password.';
+    }
+
+    return fieldErrors;
+  }
+
+  function focusFirstLoginError(fields) {
+    if (fields && fields.username) {
+      refs.loginUsername.focus();
+      return;
+    }
+    if (fields && fields.password) {
+      refs.loginPassword.focus();
+    }
+  }
+
+  function handleLoginFailure(error, options) {
+    var settings = options || {};
+    var details = error && error.details ? error.details : null;
+    var fieldErrors = details && details.fields ? details.fields : null;
+    var message = error && error.message ? error.message : 'Unable to sign in.';
+
+    if (fieldErrors) {
+      applyLoginFieldErrors(fieldErrors);
+      focusFirstLoginError(fieldErrors);
+    }
+
+    if (settings.snapshotFailure) {
+      message = (settings.snapshotPrefix || 'Sign-in succeeded, but the dashboard could not load. ') + message;
+    }
+
+    if (details && details.diagnostics) {
+      renderLoginDiagnostics(details.diagnostics);
+    } else {
+      renderLoginDiagnostics(state.auth && state.auth.diagnostics ? state.auth.diagnostics : null);
+    }
+
+    showLoginError(message);
+  }
+
   function getJson(response) {
     if (response.status === 204) return Promise.resolve({});
     return response.json().catch(function() {
@@ -145,10 +307,10 @@
       return getJson(response).then(function(body) {
         if (response.status === 401 && path !== '/api/admin/auth') {
           showLogin();
-          throw new Error('Your session has expired. Sign in again.');
+          throw buildRequestError('Your session has expired. Sign in again.', response.status, body);
         }
         if (!response.ok) {
-          throw new Error(body && body.error ? body.error : 'Request failed.');
+          throw buildRequestError(body && body.error ? body.error : 'Request failed.', response.status, body);
         }
         return body;
       });
@@ -221,6 +383,8 @@
   }
 
   function showApp() {
+    clearLoginFieldErrors();
+    clearLoginError();
     refs.loginScreen.classList.add('hidden');
     refs.appShell.hidden = false;
     refs.sessionStatus.className = 'status-pill unlocked';
@@ -1165,19 +1329,15 @@
     return apiRequest('/api/admin/auth', { cache: 'no-cache' }).then(function(auth) {
       state.auth = auth;
       refs.loginUsername.value = auth.requiredUsername || 'admin';
-      if (!auth.configured) {
-        refs.loginMessage.textContent = 'Configure ADMIN_USERNAME and ADMIN_PASSWORD or ADMIN_PASSWORD_HASH in Netlify before client login is available.';
-        refs.loginForm.querySelector('button').disabled = true;
-      } else {
-        refs.loginMessage.textContent = 'Sign in to manage the live menu, featured items, and promotions.';
-        refs.loginForm.querySelector('button').disabled = false;
-      }
+      syncLoginSetupState();
 
       if (auth.authenticated) {
         state.auth.authenticated = true;
         state.auth.username = auth.username || auth.requiredUsername;
-        showApp();
-        return loadSnapshot();
+        return loadSnapshot().then(function() {
+          showApp();
+          return null;
+        });
       }
 
       showLogin();
@@ -1186,10 +1346,27 @@
   }
 
   refs.loginForm.addEventListener('submit', function(event) {
+    var credentialsAccepted = false;
+
     event.preventDefault();
-    refs.loginError.classList.remove('show');
-    refs.loginError.textContent = '';
-    setLoading(refs.loginForm.querySelector('button'), true);
+    clearLoginFieldErrors();
+    clearLoginError();
+    renderLoginDiagnostics(state.auth && state.auth.diagnostics ? state.auth.diagnostics : null);
+
+    if (!state.auth.configured) {
+      syncLoginSetupState();
+      showLoginError('Admin authentication is not configured yet.');
+      return;
+    }
+
+    var clientFieldErrors = validateLoginFields();
+    if (applyLoginFieldErrors(clientFieldErrors)) {
+      focusFirstLoginError(clientFieldErrors);
+      showLoginError('Enter the required login fields.');
+      return;
+    }
+
+    setLoginSubmitting(true);
 
     apiRequest('/api/admin/auth', {
       method: 'POST',
@@ -1198,18 +1375,33 @@
         password: refs.loginPassword.value
       })
     }).then(function(result) {
+      credentialsAccepted = true;
       state.auth.authenticated = true;
       state.auth.username = result.username;
       refs.loginPassword.value = '';
-      showApp();
-      showToast('success', 'Signed in', 'You can now manage live website content.');
-      return loadSnapshot();
+      return loadSnapshot().then(function() {
+        showApp();
+        showToast('success', 'Signed in', 'You can now manage live website content.');
+      });
     }).catch(function(error) {
-      refs.loginError.textContent = error.message;
-      refs.loginError.classList.add('show');
+      showLogin();
+      handleLoginFailure(error, {
+        snapshotFailure: credentialsAccepted,
+        snapshotPrefix: 'Sign-in succeeded, but the dashboard could not load. '
+      });
     }).finally(function() {
-      setLoading(refs.loginForm.querySelector('button'), false);
+      setLoginSubmitting(false);
     });
+  });
+
+  refs.loginUsername.addEventListener('input', function() {
+    setLoginFieldState(refs.loginUsername, refs.loginUsernameError, '');
+    if (refs.loginError.classList.contains('show')) clearLoginError();
+  });
+
+  refs.loginPassword.addEventListener('input', function() {
+    setLoginFieldState(refs.loginPassword, refs.loginPasswordError, '');
+    if (refs.loginError.classList.contains('show')) clearLoginError();
   });
 
   refs.logoutBtn.addEventListener('click', function() {
@@ -1311,8 +1503,13 @@
   });
 
   fetchSession().catch(function(error) {
+    var hadSession = Boolean(state.auth && state.auth.authenticated);
+
     console.error(error);
-    refs.loginError.textContent = error.message || 'Unable to load admin session.';
-    refs.loginError.classList.add('show');
+    showLogin();
+    handleLoginFailure(error, {
+      snapshotFailure: hadSession,
+      snapshotPrefix: 'Your session is active, but the dashboard could not load. '
+    });
   });
 })();

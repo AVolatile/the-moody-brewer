@@ -149,9 +149,18 @@ body { padding-top: 0 !important; }
 .carousel-caption h1,
 .carousel-caption h2,
 .carousel-caption .display-1 { color: var(--text) !important; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
-.carousel .carousel-item img { height: 1000px; width: 100%; object-fit: cover; }
+.carousel .carousel-item img { height: 860px; width: 100%; object-fit: cover; }
 @media (max-width: 768px) {
   .carousel .carousel-item img { height: 520px; }
+}
+@media (min-width: 1200px) {
+  .navbar-brand img { height: 52px; }
+  .carousel .carousel-item img { height: 680px; }
+  .carousel-caption .display-1 { font-size: 5.4rem; line-height: 1.06; }
+  .carousel-caption h2 { font-size: 1.28rem; }
+  .display-4 { font-size: 2.7rem; }
+  .section-title { padding: 88px 0 28px 0; }
+  .section-title::after { height: 82px; }
 }
 
 /* What we serve feature grid */

@@ -51,6 +51,46 @@ function getAuthConfig() {
   };
 }
 
+function getAuthDiagnostics() {
+  const rawUsername = String(process.env.ADMIN_USERNAME || '').trim();
+  const rawPasswordHash = String(process.env.ADMIN_PASSWORD_HASH || '').trim();
+  const rawPassword = String(process.env.ADMIN_PASSWORD || '').trim();
+  const rawAdminKey = String(process.env.ADMIN_KEY || '').trim();
+  const rawSessionSecret = String(process.env.ADMIN_SESSION_SECRET || '').trim();
+  const config = getAuthConfig();
+  const missing = [];
+  const warnings = [];
+
+  if (!(rawPasswordHash || rawPassword || rawAdminKey)) {
+    missing.push('ADMIN_PASSWORD_HASH or ADMIN_PASSWORD');
+  }
+
+  if (!rawSessionSecret && (rawPasswordHash || rawPassword || rawAdminKey)) {
+    warnings.push('ADMIN_SESSION_SECRET is not set. Session cookies currently reuse the password secret.');
+  }
+
+  return {
+    ready: config.ready,
+    username: config.username,
+    usernameSource: rawUsername ? 'ADMIN_USERNAME' : 'default',
+    passwordHashConfigured: Boolean(rawPasswordHash),
+    passwordConfigured: Boolean(rawPassword),
+    legacyAdminKeyConfigured: Boolean(rawAdminKey),
+    sessionSecretConfigured: Boolean(rawSessionSecret),
+    sessionSecretSource: rawSessionSecret
+      ? 'ADMIN_SESSION_SECRET'
+      : rawPasswordHash
+        ? 'ADMIN_PASSWORD_HASH'
+        : rawPassword
+          ? 'ADMIN_PASSWORD'
+          : rawAdminKey
+            ? 'ADMIN_KEY'
+            : null,
+    missing,
+    warnings
+  };
+}
+
 function buildSignature(payload, secret) {
   return crypto
     .createHmac('sha256', secret)
@@ -178,6 +218,7 @@ module.exports = {
   clearSessionCookie,
   createSessionCookie,
   getAuthConfig,
+  getAuthDiagnostics,
   getSessionUser,
   verifyCredentials
 };
