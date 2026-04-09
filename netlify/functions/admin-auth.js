@@ -31,8 +31,6 @@ exports.handler = async function handler(event) {
       return json(200, {
         configured: authConfig.ready,
         authenticated: Boolean(sessionUser),
-        username: sessionUser ? sessionUser.username : null,
-        requiredUsername: authConfig.username,
         diagnostics: buildDiagnostics()
       });
     }
@@ -40,7 +38,7 @@ exports.handler = async function handler(event) {
     if (event.httpMethod === 'POST') {
       if (!authConfig.ready) {
         return json(500, {
-          error: 'Admin authentication is not configured. Add an admin password hash or password before signing in.',
+          error: 'Admin authentication is not configured. Add the required sign-in settings before signing in.',
           details: {
             diagnostics: buildDiagnostics()
           }
@@ -70,23 +68,14 @@ exports.handler = async function handler(event) {
 
       const valid = await verifyCredentials(username, password);
       if (!valid) {
-        const details = username !== authConfig.username
-          ? {
-              fields: {
-                username: `Use the configured username: ${authConfig.username}.`
-              }
-            }
-          : undefined;
-
         return json(401, {
-          error: 'Invalid username or password.',
-          ...(details ? { details } : {})
+          error: 'Invalid username or password.'
         });
       }
 
       return json(
         200,
-        { ok: true, username: authConfig.username },
+        { ok: true },
         { 'Set-Cookie': createSessionCookie(event, authConfig.username) }
       );
     }

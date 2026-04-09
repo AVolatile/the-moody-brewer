@@ -5,8 +5,6 @@
     auth: {
       configured: true,
       authenticated: false,
-      requiredUsername: 'admin',
-      username: null,
       diagnostics: null
     },
     snapshot: {
@@ -1311,7 +1309,7 @@
       if (state.itemCategoryFilter !== 'all' && !getCategoryById(state.itemCategoryFilter)) {
         state.itemCategoryFilter = 'all';
       }
-      refs.sidebarStatusText.textContent = 'Signed in as ' + (state.auth.username || state.auth.requiredUsername) + '. Your saved updates will appear on the website.';
+      refs.sidebarStatusText.textContent = 'You are signed in and ready to update the website.';
       renderNavigationCounts();
       renderStats();
       renderCurrentView();
@@ -1321,12 +1319,10 @@
   function fetchSession() {
     return apiRequest('/api/admin/auth', { cache: 'no-cache' }).then(function(auth) {
       state.auth = auth;
-      refs.loginUsername.value = auth.requiredUsername || 'admin';
       syncLoginSetupState();
 
       if (auth.authenticated) {
         state.auth.authenticated = true;
-        state.auth.username = auth.username || auth.requiredUsername;
         return loadSnapshot().then(function() {
           showApp();
           return null;
@@ -1370,7 +1366,6 @@
     }).then(function(result) {
       credentialsAccepted = true;
       state.auth.authenticated = true;
-      state.auth.username = result.username;
       refs.loginPassword.value = '';
       return loadSnapshot().then(function() {
         showApp();

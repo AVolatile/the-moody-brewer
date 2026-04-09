@@ -35,7 +35,7 @@ function parseCookies(cookieHeader) {
 }
 
 function getAuthConfig() {
-  const username = String(process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
+  const username = String(process.env.ADMIN_USERNAME || '').trim();
   const passwordHash = String(process.env.ADMIN_PASSWORD_HASH || '').trim();
   const password = String(process.env.ADMIN_PASSWORD || process.env.ADMIN_KEY || '').trim();
   const sessionSecret = String(
@@ -47,7 +47,7 @@ function getAuthConfig() {
     passwordHash,
     password,
     sessionSecret,
-    ready: Boolean(sessionSecret && (passwordHash || password))
+    ready: Boolean(username && sessionSecret && (passwordHash || password))
   };
 }
 
@@ -61,6 +61,10 @@ function getAuthDiagnostics() {
   const missing = [];
   const warnings = [];
 
+  if (!rawUsername) {
+    missing.push('ADMIN_USERNAME');
+  }
+
   if (!(rawPasswordHash || rawPassword || rawAdminKey)) {
     missing.push('ADMIN_PASSWORD_HASH or ADMIN_PASSWORD');
   }
@@ -71,8 +75,6 @@ function getAuthDiagnostics() {
 
   return {
     ready: config.ready,
-    username: config.username,
-    usernameSource: rawUsername ? 'ADMIN_USERNAME' : 'default',
     passwordHashConfigured: Boolean(rawPasswordHash),
     passwordConfigured: Boolean(rawPassword),
     legacyAdminKeyConfigured: Boolean(rawAdminKey),
