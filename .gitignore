@@ -2,3 +2,7 @@
 .env
 .env.*
 .env.netlify.local
+node_modules/
+.netlify/
+dist/
+build/
