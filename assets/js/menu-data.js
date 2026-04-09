@@ -23,6 +23,16 @@
     if (node) node.innerHTML = '';
   }
 
+  function setVisibility(node, isVisible) {
+    if (node) node.hidden = !isVisible;
+  }
+
+  function setMessage(node, message, className) {
+    if (!node) return;
+    setVisibility(node, true);
+    node.innerHTML = '<div class="' + (className || 'empty-block') + '">' + escapeHtml(message) + '</div>';
+  }
+
   function getBadgeMarkup(item) {
     var parts = [];
     if (!item.isAvailable) {
@@ -82,14 +92,16 @@
     clear(container);
 
     if (!promotions || !promotions.length) {
-      container.innerHTML = '<div class="empty-block compact">Daily specials can be added from the admin panel at any time.</div>';
+      setVisibility(container, false);
       return;
     }
+
+    setVisibility(container, true);
 
     container.innerHTML = promotions.map(function(promotion) {
       return [
         '<article class="promo-card">',
-          '<p class="promo-card__eyebrow">Live Promotion</p>',
+          '<p class="promo-card__eyebrow">Special Offer</p>',
           '<h3>' + escapeHtml(promotion.title) + '</h3>',
           (promotion.description ? '<p>' + escapeHtml(promotion.description) + '</p>' : ''),
           '<div class="promo-card__meta">',
@@ -108,9 +120,11 @@
     clear(container);
 
     if (!items || !items.length) {
-      container.innerHTML = '<div class="empty-block">Featured items will appear here as soon as they are added in the admin panel.</div>';
+      setMessage(container, 'Seasonal favorites will be shared here soon.');
       return;
     }
+
+    setVisibility(container, true);
 
     container.innerHTML = items.map(function(item) {
       var linked = item.linkedItem || null;
@@ -149,7 +163,7 @@
       '<section class="menu-catalog-section">',
         '<div class="menu-catalog-section__header">',
           '<div>',
-            '<p class="menu-section-label">Menu Category</p>',
+            '<p class="menu-section-label">On the Menu</p>',
             '<h2>' + escapeHtml(category.name) + '</h2>',
           '</div>',
           (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
@@ -171,7 +185,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-block">This category is ready for the next item.</div>'),
+          }).join('') : '<div class="empty-block">More favorites coming soon.</div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -187,7 +201,7 @@
       '<section class="menu-catalog-section">',
         '<div class="menu-catalog-section__header">',
           '<div>',
-            '<p class="menu-section-label">Menu Category</p>',
+            '<p class="menu-section-label">On the Menu</p>',
             '<h2>' + escapeHtml(category.name) + '</h2>',
           '</div>',
           (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
@@ -220,7 +234,7 @@
                     }, { priceLabels: ['', secondLabel] }) + '</td>',
                   '</tr>'
                 ].join('');
-              }).join('') : '<tr><td colspan="3"><div class="empty-block compact">This category is ready for the next item.</div></td></tr>'),
+              }).join('') : '<tr><td colspan="3"><div class="empty-block compact">More favorites coming soon.</div></td></tr>'),
             '</tbody>',
           '</table>',
         '</div>',
@@ -234,7 +248,7 @@
       '<section class="menu-catalog-section">',
         '<div class="menu-catalog-section__header">',
           '<div>',
-            '<p class="menu-section-label">Menu Category</p>',
+            '<p class="menu-section-label">On the Menu</p>',
             '<h2>' + escapeHtml(category.name) + '</h2>',
           '</div>',
           (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
@@ -253,7 +267,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-block">This category is ready for the next item.</div>'),
+          }).join('') : '<div class="empty-block">More favorites coming soon.</div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -262,9 +276,10 @@
   function renderMenuPage(container, categories) {
     if (!container) return;
     clear(container);
+    setVisibility(container, true);
 
     if (!categories || !categories.length) {
-      container.innerHTML = '<div class="empty-block">The live menu is empty right now. Add categories and items from the admin panel.</div>';
+      setMessage(container, 'Our menu is being refreshed. Please check back soon.');
       return;
     }
 
@@ -281,31 +296,33 @@
     var menuRoot = document.getElementById('menu-content-root');
 
     if (homePromotions) {
-      homePromotions.innerHTML = '<div class="empty-block compact">Loading live promotions...</div>';
+      clear(homePromotions);
+      setVisibility(homePromotions, false);
     }
     if (homeFeatured) {
-      homeFeatured.innerHTML = '<div class="empty-block">Loading featured items...</div>';
+      setMessage(homeFeatured, 'Loading today\'s favorites...');
     }
     if (menuRoot) {
-      menuRoot.innerHTML = '<div class="empty-block">Loading live menu...</div>';
+      setMessage(menuRoot, 'Loading the menu...');
     }
   }
 
   function showFetchError(error) {
-    console.error('Live content request failed', error);
+    console.error('Website content request failed', error);
 
     var homeFeatured = document.getElementById('homepage-featured-root');
     var homePromotions = document.getElementById('home-promotions');
     var menuRoot = document.getElementById('menu-content-root');
 
     if (homePromotions) {
-      homePromotions.innerHTML = '<div class="empty-block compact">Promotions are temporarily unavailable.</div>';
+      clear(homePromotions);
+      setVisibility(homePromotions, false);
     }
     if (homeFeatured) {
-      homeFeatured.innerHTML = '<div class="empty-block">Featured items are temporarily unavailable.</div>';
+      setMessage(homeFeatured, 'Fresh favorites will be shared here soon.');
     }
     if (menuRoot) {
-      menuRoot.innerHTML = '<div class="empty-block">The live menu is temporarily unavailable.</div>';
+      setMessage(menuRoot, 'Our menu is taking a moment to load. Please check back shortly.');
     }
   }
 

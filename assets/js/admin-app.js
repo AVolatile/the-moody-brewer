@@ -76,11 +76,11 @@
   };
 
   var viewMeta = {
-    overview: { title: 'Overview', createLabel: 'New Menu Item', createEntity: 'item' },
-    categories: { title: 'Menu Categories', createLabel: 'New Category', createEntity: 'category' },
-    items: { title: 'Menu Items', createLabel: 'New Menu Item', createEntity: 'item' },
-    featured: { title: 'Featured Items', createLabel: 'New Featured Item', createEntity: 'featured' },
-    promotions: { title: 'Promotions', createLabel: 'New Promotion', createEntity: 'promotion' }
+    overview: { title: 'Overview', createLabel: 'Add Menu Item', createEntity: 'item' },
+    categories: { title: 'Menu Sections', createLabel: 'Add Section', createEntity: 'category' },
+    items: { title: 'Menu Items', createLabel: 'Add Menu Item', createEntity: 'item' },
+    featured: { title: 'Homepage Highlights', createLabel: 'Add Highlight', createEntity: 'featured' },
+    promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' }
   };
 
   function escapeHtml(value) {
@@ -190,24 +190,21 @@
 
     if (diagnostics && diagnostics.auth) {
       if (diagnostics.auth.missing && diagnostics.auth.missing.length) {
-        sections.push(loginDiagnosticMarkup('error', 'Missing Admin Setup', diagnostics.auth.missing));
+        sections.push(loginDiagnosticMarkup('error', 'Sign-In Setup Needed', [
+          'A sign-in setting still needs to be completed before this page can be used.'
+        ]));
       }
       if (diagnostics.auth.warnings && diagnostics.auth.warnings.length) {
-        sections.push(loginDiagnosticMarkup('warn', 'Auth Warnings', diagnostics.auth.warnings));
+        sections.push(loginDiagnosticMarkup('warn', 'Additional Setup Needed', [
+          'One of the site settings still needs attention.'
+        ]));
       }
     }
 
     if (diagnostics && diagnostics.database && !diagnostics.database.configured) {
-      var databaseItems = [];
-      if (diagnostics.database.missing && diagnostics.database.missing.length) {
-        databaseItems = databaseItems.concat(diagnostics.database.missing);
-      } else {
-        databaseItems.push('Add a Neon connection string before loading the dashboard.');
-      }
-      if (diagnostics.database.acceptedVariables && diagnostics.database.acceptedVariables.length) {
-        databaseItems.push('Accepted variable names: ' + diagnostics.database.acceptedVariables.join(', '));
-      }
-      sections.push(loginDiagnosticMarkup('error', 'Database Setup Needed', databaseItems));
+      sections.push(loginDiagnosticMarkup('error', 'Website Connection Needed', [
+        'The website connection still needs to be completed before this page can open.'
+      ]));
     }
 
     refs.loginDiagnostics.innerHTML = sections.join('');
@@ -220,7 +217,7 @@
     renderLoginDiagnostics(diagnostics);
 
     if (!state.auth.configured) {
-      refs.loginMessage.textContent = 'Admin sign-in is not fully configured yet.';
+      refs.loginMessage.textContent = 'This page is almost ready. A sign-in setting still needs to be completed.';
       refs.loginSubmitBtn.disabled = true;
       return;
     }
@@ -228,11 +225,11 @@
     refs.loginSubmitBtn.disabled = false;
 
     if (diagnostics && diagnostics.database && !diagnostics.database.configured) {
-      refs.loginMessage.textContent = 'Credentials can be checked, but the dashboard cannot load until the Neon database connection is configured.';
+      refs.loginMessage.textContent = 'Sign-in is ready, but the website connection still needs to be completed.';
       return;
     }
 
-    refs.loginMessage.textContent = 'Sign in to manage the live menu, featured items, and promotions.';
+    refs.loginMessage.textContent = 'Sign in to update the menu, homepage highlights, and special offers.';
   }
 
   function setLoginSubmitting(isLoading) {
@@ -277,7 +274,7 @@
     }
 
     if (settings.snapshotFailure) {
-      message = (settings.snapshotPrefix || 'Sign-in succeeded, but the dashboard could not load. ') + message;
+      message = (settings.snapshotPrefix || 'We could not finish opening this page. ') + message;
     }
 
     if (details && details.diagnostics) {
@@ -388,16 +385,16 @@
     refs.loginScreen.classList.add('hidden');
     refs.appShell.hidden = false;
     refs.sessionStatus.className = 'status-pill unlocked';
-    refs.sessionStatusLabel.textContent = 'Authenticated';
+    refs.sessionStatusLabel.textContent = 'Signed In';
   }
 
   function renderStats() {
     var dashboard = state.snapshot.dashboard;
     refs.statsRow.innerHTML = [
-      statCard('fa-layer-group', 'brown', 'Categories', dashboard.categoryCount),
+      statCard('fa-layer-group', 'brown', 'Menu Sections', dashboard.categoryCount),
       statCard('fa-coffee', 'blue', 'Menu Items', dashboard.itemCount),
-      statCard('fa-check-circle', 'green', 'Available', dashboard.availableItemCount),
-      statCard('fa-tags', 'purple', 'Live Promotions', dashboard.activePromotionCount)
+      statCard('fa-check-circle', 'green', 'Available Today', dashboard.availableItemCount),
+      statCard('fa-tags', 'purple', 'Current Offers', dashboard.activePromotionCount)
     ].join('');
   }
 
@@ -423,40 +420,40 @@
     return [
       '<div class="overview-grid">',
         '<section class="section-card">',
-          '<div class="section-card-header"><h3>Live Promotions</h3></div>',
+          '<div class="section-card-header"><h3>Current Offers</h3></div>',
           '<div class="content-pad">',
             (activePromotions.length ? activePromotions.map(function(promotion) {
               return [
                 '<div class="overview-list-item">',
                   '<div>',
                     '<strong>', escapeHtml(promotion.title), '</strong>',
-                    '<p>', escapeHtml(promotion.description || 'Promotion is live on the public site.'), '</p>',
+                    '<p>', escapeHtml(promotion.description || 'Showing on the website now.'), '</p>',
                   '</div>',
-                  '<span class="meta-pill warm">', escapeHtml(promotion.label || 'Active'), '</span>',
+                  '<span class="meta-pill warm">', escapeHtml(promotion.label || 'Now Showing'), '</span>',
                 '</div>'
               ].join('');
-            }).join('') : '<div class="empty-state compact"><i class="fa fa-tags"></i><h4>No live promotions</h4><p>Create a promotion to surface offers on the homepage and menu.</p></div>'),
+            }).join('') : '<div class="empty-state compact"><i class="fa fa-tags"></i><h4>No offers right now</h4><p>Add a special offer whenever you want to highlight something new.</p></div>'),
           '</div>',
         '</section>',
         '<section class="section-card">',
-          '<div class="section-card-header"><h3>Featured Homepage Content</h3></div>',
+          '<div class="section-card-header"><h3>Homepage Highlights</h3></div>',
           '<div class="content-pad">',
             (featuredItems.length ? featuredItems.map(function(item) {
               return [
                 '<div class="overview-list-item">',
                   '<div>',
                     '<strong>', escapeHtml(item.headline), '</strong>',
-                    '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Standalone featured item')), '</p>',
+                    '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Homepage highlight')), '</p>',
                   '</div>',
-                  '<span class="meta-pill ', item.isActive ? 'success' : 'muted', '">', item.isActive ? 'Active' : 'Draft', '</span>',
+                  '<span class="meta-pill ', item.isActive ? 'success' : 'muted', '">', item.isActive ? 'Visible' : 'Hidden', '</span>',
                 '</div>'
               ].join('');
-            }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No featured items yet</h4><p>Add homepage highlights that point visitors toward key menu items.</p></div>'),
+            }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No highlights yet</h4><p>Add a homepage feature whenever you want to spotlight a favorite.</p></div>'),
           '</div>',
         '</section>',
       '</div>',
       '<section class="section-card mt-entity">',
-        '<div class="section-card-header"><h3>Category Snapshot</h3></div>',
+        '<div class="section-card-header"><h3>Menu Sections</h3></div>',
         '<div class="entity-grid compact-grid">',
           (categories.length ? categories.map(function(category) {
             var itemCount = state.snapshot.menuItems.filter(function(item) {
@@ -466,19 +463,19 @@
               '<article class="entity-card">',
                 '<div class="entity-card__head">',
                   '<div>',
-                    '<div class="entity-eyebrow">', escapeHtml(category.layout), '</div>',
+                    '<div class="entity-eyebrow">Menu section</div>',
                     '<h4>', escapeHtml(category.name), '</h4>',
                   '</div>',
                   '<span class="meta-pill">', escapeHtml(String(itemCount)), ' items</span>',
                 '</div>',
-                '<p>', escapeHtml(category.description || 'No category description added.'), '</p>',
+                '<p>', escapeHtml(category.description || 'A clean section ready for your menu items.'), '</p>',
                 '<div class="entity-card__meta">',
-                  '<span class="meta-pill ', category.allowMultiPrice ? 'info' : 'muted', '">', category.allowMultiPrice ? 'Multi-price' : 'Single price', '</span>',
-                  '<span class="meta-pill ', category.requireImage ? 'warm' : 'muted', '">', category.requireImage ? 'Image required' : 'Image optional', '</span>',
+                  '<span class="meta-pill ', category.allowMultiPrice ? 'info' : 'muted', '">', category.allowMultiPrice ? 'Multiple sizes' : 'Single price', '</span>',
+                  '<span class="meta-pill ', category.requireImage ? 'warm' : 'muted', '">', category.requireImage ? 'Photo needed' : 'Photo optional', '</span>',
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state compact"><i class="fa fa-layer-group"></i><h4>No categories yet</h4><p>Create categories before adding menu items.</p></div>'),
+          }).join('') : '<div class="empty-state compact"><i class="fa fa-layer-group"></i><h4>No menu sections yet</h4><p>Add a section to begin organizing the menu.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -490,8 +487,8 @@
     return [
       '<section class="section-card">',
         '<div class="section-card-header">',
-          '<h3>Category Manager</h3>',
-          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="category"><i class="fa fa-plus"></i><span>Add Category</span></button>',
+          '<h3>Menu Sections</h3>',
+          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="category"><i class="fa fa-plus"></i><span>Add Section</span></button>',
         '</div>',
         '<div class="entity-grid">',
           (categories.length ? categories.map(function(category, index) {
@@ -502,16 +499,16 @@
               '<article class="entity-card">',
                 '<div class="entity-card__head">',
                   '<div>',
-                    '<div class="entity-eyebrow">', escapeHtml(category.slug), '</div>',
+                    '<div class="entity-eyebrow">Menu section</div>',
                     '<h4>', escapeHtml(category.name), '</h4>',
                   '</div>',
                   '<span class="meta-pill">', escapeHtml(String(itemCount)), ' items</span>',
                 '</div>',
-                '<p>', escapeHtml(category.description || 'No description yet.'), '</p>',
+                '<p>', escapeHtml(category.description || 'Add a short description if you would like one shown here.'), '</p>',
                 '<div class="entity-card__meta">',
-                  '<span class="meta-pill">', escapeHtml(category.layout), '</span>',
-                  '<span class="meta-pill ', category.allowMultiPrice ? 'info' : 'muted', '">', category.allowMultiPrice ? 'Multi-price' : 'Single price', '</span>',
-                  '<span class="meta-pill ', category.requireImage ? 'warm' : 'muted', '">', category.requireImage ? 'Image required' : 'Image optional', '</span>',
+                  '<span class="meta-pill">', escapeHtml(category.layout === 'card' ? 'Feature cards' : category.layout === 'table' ? 'Compact list' : 'Simple list'), '</span>',
+                  '<span class="meta-pill ', category.allowMultiPrice ? 'info' : 'muted', '">', category.allowMultiPrice ? 'Multiple sizes' : 'Single price', '</span>',
+                  '<span class="meta-pill ', category.requireImage ? 'warm' : 'muted', '">', category.requireImage ? 'Photo needed' : 'Photo optional', '</span>',
                 '</div>',
                 '<div class="entity-card__actions">',
                   '<button class="btn-tbl edit" type="button" data-action="edit" data-entity="category" data-id="', category.id, '"><i class="fa fa-edit"></i>Edit</button>',
@@ -521,7 +518,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state"><i class="fa fa-layer-group"></i><h4>No categories yet</h4><p>Create your first menu category to start structuring the live menu.</p></div>'),
+          }).join('') : '<div class="empty-state"><i class="fa fa-layer-group"></i><h4>No menu sections yet</h4><p>Add your first section to start shaping the menu.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -563,13 +560,13 @@
     return [
       '<section class="section-card">',
         '<div class="section-card-header">',
-          '<h3>Menu Item Manager</h3>',
-          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="item"><i class="fa fa-plus"></i><span>Add Item</span></button>',
+          '<h3>Menu Items</h3>',
+          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="item"><i class="fa fa-plus"></i><span>Add Menu Item</span></button>',
         '</div>',
         '<div class="toolbar">',
           '<div class="search-wrap">',
             '<i class="fa fa-search"></i>',
-            '<input id="itemSearchInput" type="search" placeholder="Search items, categories, or promotions" value="', escapeHtml(state.itemSearch), '">',
+            '<input id="itemSearchInput" type="search" placeholder="Search by item, section, or offer" value="', escapeHtml(state.itemSearch), '">',
           '</div>',
         '</div>',
         renderItemTabs(),
@@ -591,9 +588,9 @@
                   (item.isFeatured ? '<span class="featured-badge">Featured</span>' : ''),
                 '</div>',
                 '<div class="item-card-body">',
-                  '<div class="item-card-cat">' + escapeHtml(category ? category.name : 'Unassigned') + '</div>',
+                  '<div class="item-card-cat">' + escapeHtml(category ? category.name : 'No section') + '</div>',
                   '<div class="item-card-name">' + escapeHtml(item.name) + '</div>',
-                  '<div class="item-card-desc">' + escapeHtml(item.description || 'No description yet.') + '</div>',
+                  '<div class="item-card-desc">' + escapeHtml(item.description || 'A description can be added here anytime.') + '</div>',
                   '<div class="item-status-row">',
                     '<span class="meta-pill ' + (item.isAvailable ? 'success' : 'muted') + '">' + (item.isAvailable ? 'Available' : 'Sold out') + '</span>',
                     (item.promotion ? '<span class="meta-pill warm">' + escapeHtml(item.promotion.label || item.promotion.title) + '</span>' : ''),
@@ -610,7 +607,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state"><i class="fa fa-coffee"></i><h4>No matching items</h4><p>Adjust the filters or add a new item to the live menu.</p></div>'),
+          }).join('') : '<div class="empty-state"><i class="fa fa-coffee"></i><h4>No items match this view</h4><p>Try a different search or add a menu item when you are ready.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -622,8 +619,8 @@
     return [
       '<section class="section-card">',
         '<div class="section-card-header">',
-          '<h3>Featured Homepage Items</h3>',
-          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="featured"><i class="fa fa-plus"></i><span>Add Featured Item</span></button>',
+          '<h3>Homepage Highlights</h3>',
+          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="featured"><i class="fa fa-plus"></i><span>Add Highlight</span></button>',
         '</div>',
         '<div class="menu-grid">',
           (items.length ? items.map(function(item, index) {
@@ -636,11 +633,11 @@
                   (item.isActive ? '<span class="featured-badge">Live</span>' : ''),
                 '</div>',
                 '<div class="item-card-body">',
-                  '<div class="item-card-cat">' + escapeHtml(item.linkedItem ? item.linkedItem.name : 'Standalone item') + '</div>',
+                  '<div class="item-card-cat">' + escapeHtml(item.linkedItem ? item.linkedItem.name : 'Homepage feature') + '</div>',
                   '<div class="item-card-name">' + escapeHtml(item.headline) + '</div>',
-                  '<div class="item-card-desc">' + escapeHtml(item.subtext || 'No supporting copy yet.') + '</div>',
+                  '<div class="item-card-desc">' + escapeHtml(item.subtext || 'Add a short supporting line whenever you would like one.') + '</div>',
                   '<div class="item-status-row">',
-                    '<span class="meta-pill ' + (item.isActive ? 'success' : 'muted') + '">' + (item.isActive ? 'Active' : 'Hidden') + '</span>',
+                    '<span class="meta-pill ' + (item.isActive ? 'success' : 'muted') + '">' + (item.isActive ? 'Visible' : 'Hidden') + '</span>',
                     (item.promotion ? '<span class="meta-pill warm">' + escapeHtml(item.promotion.label || item.promotion.title) + '</span>' : ''),
                   '</div>',
                   '<div class="item-card-price">' + escapeHtml(item.linkedItem ? item.linkedItem.priceSummary : 'Homepage highlight') + '</div>',
@@ -655,7 +652,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state"><i class="fa fa-star"></i><h4>No featured items yet</h4><p>Add featured entries that surface on the homepage immediately.</p></div>'),
+          }).join('') : '<div class="empty-state"><i class="fa fa-star"></i><h4>No homepage highlights yet</h4><p>Add a highlight whenever you want to spotlight something special.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -667,12 +664,12 @@
     return [
       '<section class="section-card">',
         '<div class="section-card-header">',
-          '<h3>Promotions &amp; Discounts</h3>',
-          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="promotion"><i class="fa fa-plus"></i><span>Add Promotion</span></button>',
+          '<h3>Special Offers</h3>',
+          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="promotion"><i class="fa fa-plus"></i><span>Add Offer</span></button>',
         '</div>',
         '<div class="entity-grid">',
           (promotions.length ? promotions.map(function(promotion, index) {
-            var statusText = promotion.isCurrent ? 'Live now' : promotion.isActive ? 'Scheduled' : 'Inactive';
+            var statusText = promotion.isCurrent ? 'Showing now' : promotion.isActive ? 'Scheduled' : 'Hidden';
             return [
               '<article class="entity-card">',
                 '<div class="entity-card__head">',
@@ -682,9 +679,9 @@
                   '</div>',
                   '<span class="meta-pill ', promotion.isCurrent ? 'success' : promotion.isActive ? 'warm' : 'muted', '">', escapeHtml(statusText), '</span>',
                 '</div>',
-                '<p>', escapeHtml(promotion.description || 'No promotion description yet.'), '</p>',
+                '<p>', escapeHtml(promotion.description || 'Add a short note here whenever you would like one shown.'), '</p>',
                 '<div class="entity-card__meta">',
-                  '<span class="meta-pill">', escapeHtml(promotion.label || 'Promotion'), '</span>',
+                  '<span class="meta-pill">', escapeHtml(promotion.label || 'Offer'), '</span>',
                   '<span class="meta-pill muted">', escapeHtml((promotion.startDate || 'Now') + ' → ' + (promotion.endDate || 'Ongoing')), '</span>',
                 '</div>',
                 '<div class="entity-card__actions">',
@@ -695,7 +692,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state"><i class="fa fa-tags"></i><h4>No promotions yet</h4><p>Create limited-time offers and attach them to menu or featured items.</p></div>'),
+          }).join('') : '<div class="empty-state"><i class="fa fa-tags"></i><h4>No offers yet</h4><p>Add a special offer for seasonal favorites, bundles, or limited-time features.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -751,7 +748,7 @@
       return;
     }
     if (action === 'delete') {
-      openDeleteModal(entity, Number(id), button.getAttribute('data-label') || 'this record');
+      openDeleteModal(entity, Number(id), button.getAttribute('data-label') || 'this item');
       return;
     }
     if (action === 'move-up' || action === 'move-down') {
@@ -783,18 +780,18 @@
         '<label class="form-label" for="drawerImageMode">Image</label>',
         '<select class="form-control" id="drawerImageMode" name="imageMode">',
           hasImage ? '<option value="keep">Keep current image</option>' : '',
-          '<option value="url"', hasImage ? '' : ' selected', '>Use image URL</option>',
-          '<option value="upload">Upload image</option>',
-          '<option value="remove">Remove image</option>',
+          '<option value="url"', hasImage ? '' : ' selected', '>Use image link</option>',
+          '<option value="upload">Upload photo</option>',
+          '<option value="remove">Remove photo</option>',
         '</select>',
-        '<p class="form-hint">Use a direct image URL or upload a new image up to 2MB.</p>',
+        '<p class="form-hint">Paste an image link or upload a photo up to 2MB.</p>',
       '</div>',
       '<div class="form-group" id="drawerImageUrlGroup">',
-        '<label class="form-label" for="drawerImageUrl">Image URL</label>',
+        '<label class="form-label" for="drawerImageUrl">Image Link</label>',
         '<input class="form-control" id="drawerImageUrl" name="imageUrl" type="text" value="' + escapeHtml(recordImageUrl || '') + '" placeholder="https://... or /assets/images/...">',
       '</div>',
       '<div class="form-group field-hidden" id="drawerImageUploadGroup">',
-        '<label class="form-label">Image Upload</label>',
+        '<label class="form-label">Upload Photo</label>',
         '<label class="img-upload-zone">',
           '<input id="drawerImageUpload" type="file" accept="image/*">',
           '<div class="img-upload-icon"><i class="fa fa-cloud-upload-alt"></i></div>',
@@ -815,12 +812,8 @@
     var labels = record.priceLabels || [];
     return [
       '<div class="form-group">',
-        '<label class="form-label" for="categoryName">Category Name <span>*</span></label>',
+        '<label class="form-label" for="categoryName">Section Name <span>*</span></label>',
         '<input class="form-control" id="categoryName" name="name" type="text" value="' + escapeHtml(record.name || '') + '" required>',
-      '</div>',
-      '<div class="form-group">',
-        '<label class="form-label" for="categorySlug">Slug</label>',
-        '<input class="form-control" id="categorySlug" name="slug" type="text" value="' + escapeHtml(record.slug || '') + '" placeholder="Optional. Generated automatically if blank.">',
       '</div>',
       '<div class="form-group">',
         '<label class="form-label" for="categoryDescription">Description</label>',
@@ -828,30 +821,30 @@
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="categoryLayout">Layout</label>',
+          '<label class="form-label" for="categoryLayout">Section Style</label>',
           '<select class="form-control" id="categoryLayout" name="layout">',
-            option('card', 'Card grid', (record.layout || 'card') === 'card'),
-            option('table', 'Table', record.layout === 'table'),
-            option('list', 'List', record.layout === 'list'),
+            option('card', 'Feature cards', (record.layout || 'card') === 'card'),
+            option('table', 'Compact list', record.layout === 'table'),
+            option('list', 'Simple list', record.layout === 'list'),
           '</select>',
         '</div>',
         '<div class="form-group">',
-          '<label class="form-label" for="categoryDisplayOrder">Display Order</label>',
+          '<label class="form-label" for="categoryDisplayOrder">Order on Page</label>',
           '<input class="form-control" id="categoryDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
         '</div>',
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="categoryPriceLabelOne">Primary Price Label</label>',
+          '<label class="form-label" for="categoryPriceLabelOne">First Price Label</label>',
           '<input class="form-control" id="categoryPriceLabelOne" name="priceLabelOne" type="text" value="' + escapeHtml(labels[0] || '') + '" placeholder="M">',
         '</div>',
         '<div class="form-group">',
-          '<label class="form-label" for="categoryPriceLabelTwo">Secondary Price Label</label>',
+          '<label class="form-label" for="categoryPriceLabelTwo">Second Price Label</label>',
           '<input class="form-control" id="categoryPriceLabelTwo" name="priceLabelTwo" type="text" value="' + escapeHtml(labels[1] || '') + '" placeholder="L">',
         '</div>',
       '</div>',
-      toggleMarkup('Allow multi-price items', 'Use multiple prices such as medium and large.', 'allowMultiPrice', record.allowMultiPrice),
-      toggleMarkup('Require item images', 'Ideal for visual categories like featured drinks.', 'requireImage', record.requireImage)
+      toggleMarkup('Show multiple sizes', 'Use separate prices such as medium and large.', 'allowMultiPrice', record.allowMultiPrice),
+      toggleMarkup('Use photos in this section', 'Helpful for sections where visuals matter most.', 'requireImage', record.requireImage)
     ].join('');
   }
 
@@ -879,9 +872,9 @@
         itemPriceFieldsMarkup(record, categoryId),
       '</div>',
       '<div class="form-group">',
-        '<label class="form-label" for="itemPromotion">Promotion</label>',
+        '<label class="form-label" for="itemPromotion">Offer</label>',
         '<select class="form-control" id="itemPromotion" name="promotionId">',
-          option('', 'No promotion', !record.promotionId),
+          option('', 'No offer', !record.promotionId),
           state.snapshot.promotions.map(function(promotion) {
             return option(promotion.id, promotion.title, Number(promotion.id) === Number(record.promotionId));
           }).join(''),
@@ -889,13 +882,13 @@
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="itemDisplayOrder">Display Order</label>',
+          '<label class="form-label" for="itemDisplayOrder">Order on Page</label>',
           '<input class="form-control" id="itemDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
         '</div>',
       '</div>',
       imageFieldMarkup(record.imageUrl),
-      toggleMarkup('Item is available', 'Unavailable items remain in the dashboard but appear sold out on the site.', 'isAvailable', record.isAvailable !== false),
-      toggleMarkup('Show as featured menu item', 'Useful for highlighting this item inside the menu experience.', 'isFeatured', record.isFeatured)
+      toggleMarkup('Available today', 'Turn this off when an item is temporarily unavailable.', 'isAvailable', record.isAvailable !== false),
+      toggleMarkup('Highlight in the menu', 'Use this to give the item a little extra attention.', 'isFeatured', record.isFeatured)
     ].join('');
   }
 
@@ -905,7 +898,7 @@
       '<div class="form-group">',
         '<label class="form-label" for="featuredMenuItem">Linked Menu Item</label>',
         '<select class="form-control" id="featuredMenuItem" name="menuItemId">',
-          option('', 'Standalone featured content', !record.menuItemId),
+          option('', 'Custom homepage feature', !record.menuItemId),
           sortByDisplayOrder(state.snapshot.menuItems).map(function(item) {
             return option(item.id, item.name, Number(item.id) === Number(record.menuItemId));
           }).join(''),
@@ -921,21 +914,21 @@
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="featuredPromotion">Promotion</label>',
+          '<label class="form-label" for="featuredPromotion">Offer</label>',
           '<select class="form-control" id="featuredPromotion" name="promotionId">',
-            option('', 'No promotion', !record.promotionId),
+            option('', 'No offer', !record.promotionId),
             state.snapshot.promotions.map(function(promotion) {
               return option(promotion.id, promotion.title, Number(promotion.id) === Number(record.promotionId));
             }).join(''),
           '</select>',
         '</div>',
         '<div class="form-group">',
-          '<label class="form-label" for="featuredDisplayOrder">Display Order</label>',
+          '<label class="form-label" for="featuredDisplayOrder">Order on Page</label>',
           '<input class="form-control" id="featuredDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
         '</div>',
       '</div>',
       imageFieldMarkup(record.imageUrl),
-      toggleMarkup('Featured item is live', 'Inactive featured items stay saved but do not appear on the homepage.', 'isActive', record.isActive !== false)
+      toggleMarkup('Show this on the homepage', 'Turn this off to keep it saved without displaying it.', 'isActive', record.isActive !== false)
     ].join('');
   }
 
@@ -943,48 +936,48 @@
     record = record || {};
     return [
       '<div class="form-group">',
-        '<label class="form-label" for="promotionTitle">Promotion Title <span>*</span></label>',
+        '<label class="form-label" for="promotionTitle">Offer Title <span>*</span></label>',
         '<input class="form-control" id="promotionTitle" name="title" type="text" value="' + escapeHtml(record.title || '') + '" required>',
       '</div>',
       '<div class="form-group">',
-        '<label class="form-label" for="promotionBadgeText">Badge Text</label>',
+        '<label class="form-label" for="promotionBadgeText">Offer Label</label>',
         '<input class="form-control" id="promotionBadgeText" name="badgeText" type="text" value="' + escapeHtml(record.badgeText || '') + '" placeholder="Example: 10% Off">',
       '</div>',
       '<div class="form-group">',
-        '<label class="form-label" for="promotionDescription">Description</label>',
+        '<label class="form-label" for="promotionDescription">Details</label>',
         '<textarea class="form-control" id="promotionDescription" name="description">' + escapeHtml(record.description || '') + '</textarea>',
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="promotionDiscountType">Discount Type</label>',
+          '<label class="form-label" for="promotionDiscountType">Offer Type</label>',
           '<select class="form-control" id="promotionDiscountType" name="discountType">',
-            option('text', 'Text only', (record.discountType || 'text') === 'text'),
+            option('text', 'Label only', (record.discountType || 'text') === 'text'),
             option('percentage', 'Percentage', record.discountType === 'percentage'),
-            option('fixed', 'Fixed amount', record.discountType === 'fixed'),
+            option('fixed', 'Dollar amount', record.discountType === 'fixed'),
           '</select>',
         '</div>',
         '<div class="form-group" id="discountValueGroup">',
-          '<label class="form-label" for="promotionDiscountValue">Discount Value</label>',
+          '<label class="form-label" for="promotionDiscountValue">Amount Off</label>',
           '<input class="form-control" id="promotionDiscountValue" name="discountValue" type="number" min="0" step="0.01" value="' + escapeHtml(record.discountValue || '') + '">',
         '</div>',
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="promotionStartDate">Start Date</label>',
+          '<label class="form-label" for="promotionStartDate">Starts</label>',
           '<input class="form-control" id="promotionStartDate" name="startDate" type="date" value="' + escapeHtml(record.startDate || '') + '">',
         '</div>',
         '<div class="form-group">',
-          '<label class="form-label" for="promotionEndDate">End Date</label>',
+          '<label class="form-label" for="promotionEndDate">Ends</label>',
           '<input class="form-control" id="promotionEndDate" name="endDate" type="date" value="' + escapeHtml(record.endDate || '') + '">',
         '</div>',
       '</div>',
       '<div class="price-row">',
         '<div class="form-group">',
-          '<label class="form-label" for="promotionDisplayOrder">Display Order</label>',
+          '<label class="form-label" for="promotionDisplayOrder">Order on Page</label>',
           '<input class="form-control" id="promotionDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
         '</div>',
       '</div>',
-      toggleMarkup('Promotion is active', 'Active promotions can go live immediately or follow the date range.', 'isActive', record.isActive !== false)
+      toggleMarkup('Show this offer', 'Use the dates above if you want it to appear for a limited time.', 'isActive', record.isActive !== false)
     ].join('');
   }
 
@@ -1046,10 +1039,10 @@
 
     var record = id ? getRecord(entity, id) : null;
     refs.drawerTitle.textContent = (mode === 'edit' ? 'Edit ' : 'Add ') + {
-      category: 'Category',
+      category: 'Section',
       item: 'Menu Item',
-      featured: 'Featured Item',
-      promotion: 'Promotion'
+      featured: 'Homepage Highlight',
+      promotion: 'Offer'
     }[entity];
 
     if (entity === 'category') refs.drawerForm.innerHTML = categoryFormMarkup(record);
@@ -1259,8 +1252,8 @@
 
   function openDeleteModal(entity, id, label) {
     state.pendingDelete = { entity: entity, id: id, label: label };
-    refs.modalTitle.textContent = 'Delete ' + label + '?';
-    refs.modalBody.textContent = 'This change is permanent and will update the live website.';
+    refs.modalTitle.textContent = 'Remove ' + label + '?';
+    refs.modalBody.textContent = 'This will remove it from the website until it is added again.';
     refs.modalOverlay.classList.add('open');
   }
 
@@ -1305,7 +1298,7 @@
         })
       })
     }).then(function() {
-      showToast('success', 'Order updated', 'The live display order has been updated.');
+      showToast('success', 'Order updated', 'The website order has been updated.');
       return loadSnapshot();
     }).catch(function(error) {
       showToast('error', 'Update failed', error.message);
@@ -1318,7 +1311,7 @@
       if (state.itemCategoryFilter !== 'all' && !getCategoryById(state.itemCategoryFilter)) {
         state.itemCategoryFilter = 'all';
       }
-      refs.sidebarStatusText.textContent = 'Signed in as ' + (state.auth.username || state.auth.requiredUsername) + '. Changes save directly to the live site.';
+      refs.sidebarStatusText.textContent = 'Signed in as ' + (state.auth.username || state.auth.requiredUsername) + '. Your saved updates will appear on the website.';
       renderNavigationCounts();
       renderStats();
       renderCurrentView();
@@ -1355,7 +1348,7 @@
 
     if (!state.auth.configured) {
       syncLoginSetupState();
-      showLoginError('Admin authentication is not configured yet.');
+      showLoginError('This page is still waiting on one sign-in setting.');
       return;
     }
 
@@ -1381,13 +1374,13 @@
       refs.loginPassword.value = '';
       return loadSnapshot().then(function() {
         showApp();
-        showToast('success', 'Signed in', 'You can now manage live website content.');
+        showToast('success', 'Signed in', 'You can now update the website.');
       });
     }).catch(function(error) {
       showLogin();
       handleLoginFailure(error, {
         snapshotFailure: credentialsAccepted,
-        snapshotPrefix: 'Sign-in succeeded, but the dashboard could not load. '
+        snapshotPrefix: 'Sign-in worked, but this page could not finish loading. '
       });
     }).finally(function() {
       setLoginSubmitting(false);
@@ -1407,7 +1400,7 @@
   refs.logoutBtn.addEventListener('click', function() {
     apiRequest('/api/admin/auth', { method: 'DELETE' })
       .then(function() {
-        showToast('info', 'Signed out', 'The admin session has been cleared.');
+        showToast('info', 'Signed out', 'You have safely signed out.');
         showLogin();
       })
       .catch(function(error) {
@@ -1419,7 +1412,7 @@
     setLoading(refs.refreshBtn, true);
     loadSnapshot()
       .then(function() {
-        showToast('success', 'Refreshed', 'Dashboard data is up to date.');
+        showToast('success', 'Refreshed', 'Everything is up to date.');
       })
       .catch(function(error) {
         showToast('error', 'Refresh failed', error.message);
@@ -1467,7 +1460,7 @@
       body: JSON.stringify(buildPayload(entity, mode))
     }).then(function() {
       closeDrawer();
-      showToast('success', 'Saved', 'The live content has been updated.');
+      showToast('success', 'Saved', 'Your changes are now reflected on the website.');
       return loadSnapshot();
     }).catch(function(error) {
       showToast('error', 'Save failed', error.message);
@@ -1489,7 +1482,7 @@
       body: JSON.stringify({ id: state.pendingDelete.id })
     }).then(function() {
       closeDeleteModal();
-      showToast('success', 'Deleted', 'The live content has been updated.');
+      showToast('success', 'Removed', 'The website has been updated.');
       return loadSnapshot();
     }).catch(function(error) {
       showToast('error', 'Delete failed', error.message);
@@ -1509,7 +1502,7 @@
     showLogin();
     handleLoginFailure(error, {
       snapshotFailure: hadSession,
-      snapshotPrefix: 'Your session is active, but the dashboard could not load. '
+      snapshotPrefix: 'Your sign-in is still active, but this page could not finish loading. '
     });
   });
 })();

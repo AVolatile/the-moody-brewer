@@ -6,7 +6,7 @@
     <title>Moody Brewer | Admin</title>
     <meta
       name="description"
-      content="Client admin dashboard for Moody Brewer live website content."
+      content="Client portal for updating the Moody Brewer website."
     />
     <link rel="icon" href="/assets/images/favicon.ico" />
     <link
@@ -20,7 +20,7 @@
       <div class="login-card">
         <img class="login-logo" src="/assets/images/mb_logo.png" alt="Moody Brewer" />
         <h2>Client Admin</h2>
-        <p id="loginMessage">Sign in to manage the live menu, featured items, and promotions.</p>
+        <p id="loginMessage">Sign in to update the menu, homepage highlights, and special offers.</p>
         <form id="loginForm">
           <div class="login-diagnostics" id="loginDiagnostics" hidden></div>
           <div class="login-input-wrap">
@@ -63,11 +63,11 @@
           <img src="/assets/images/mb_logo.png" alt="Moody Brewer" />
           <div>
             <div class="sidebar-logo-text">Moody Brewer</div>
-            <div class="sidebar-logo-sub">Live Content Dashboard</div>
+            <div class="sidebar-logo-sub">Website Manager</div>
           </div>
         </div>
 
-        <div class="sidebar-section-label">Workspace</div>
+        <div class="sidebar-section-label">Manage</div>
         <ul class="sidebar-nav">
           <li><a href="#" data-view="overview" class="active"><i class="fa fa-chart-line"></i><span>Overview</span></a></li>
           <li><a href="#" data-view="categories"><i class="fa fa-layer-group"></i><span>Categories</span><span class="nav-badge" id="navCategoryCount">0</span></a></li>
@@ -84,7 +84,7 @@
 
         <div class="sidebar-footer">
           <div class="sidebar-footer-info" id="sidebarStatusText">
-            Signed in. Changes save directly to the Neon-backed live site.
+            You are signed in and ready to update the website.
           </div>
           <button class="btn-logout" id="logoutBtn" type="button">
             <i class="fa fa-sign-out-alt"></i>
@@ -101,7 +101,7 @@
           <div class="topbar-title" id="viewTitle">Overview</div>
           <div class="status-pill unlocked" id="sessionStatus">
             <span class="dot"></span>
-            <span id="sessionStatusLabel">Authenticated</span>
+            <span id="sessionStatusLabel">Signed In</span>
           </div>
           <button class="btn-topbar outline" id="refreshBtn" type="button">
             <i class="fa fa-sync-alt"></i>
@@ -109,7 +109,7 @@
           </button>
           <button class="btn-topbar primary" id="createBtn" type="button">
             <i class="fa fa-plus"></i>
-            <span id="createBtnLabel">New Menu Item</span>
+            <span id="createBtnLabel">Add Menu Item</span>
           </button>
         </header>
 
@@ -133,7 +133,7 @@
         <button class="btn-secondary" id="drawerCancelBtn" type="button">Cancel</button>
         <button class="btn-primary" id="drawerSubmitBtn" type="submit" form="drawerForm">
           <span class="btn-spinner"></span>
-          <span class="btn-text">Save Changes</span>
+          <span class="btn-text">Save</span>
         </button>
       </div>
     </aside>
@@ -141,8 +141,8 @@
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal">
         <div class="modal-icon"><i class="fa fa-trash"></i></div>
-        <h3 id="modalTitle">Delete record?</h3>
-        <p id="modalBody">This action cannot be undone.</p>
+        <h3 id="modalTitle">Remove this item?</h3>
+        <p id="modalBody">This will remove it from the website.</p>
         <div class="modal-actions">
           <button class="btn-modal-cancel" id="modalCancelBtn" type="button">Cancel</button>
           <button class="btn-modal-del" id="modalConfirmBtn" type="button">Delete</button>
