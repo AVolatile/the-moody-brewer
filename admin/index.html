@@ -57,6 +57,40 @@
       </div>
     </div>
 
+    <div id="loadingScreen" hidden>
+      <div class="loading-panel" role="status" aria-live="polite" aria-busy="true">
+        <div class="loading-mark">
+          <div class="loading-orbit"></div>
+          <div class="loading-orbit secondary"></div>
+          <div class="loading-core">
+            <img src="/assets/images/mb_logo.png" alt="Moody Brewer" />
+          </div>
+        </div>
+        <p class="loading-kicker">Opening Website Manager</p>
+        <h2 id="loadingTitle">Preparing your workspace</h2>
+        <p class="loading-detail" id="loadingDetail">
+          Pulling in the latest menu sections, homepage highlights, and special offers.
+        </p>
+        <div class="loading-progress" aria-hidden="true">
+          <span class="loading-progress__bar"></span>
+        </div>
+        <div class="loading-steps">
+          <div class="loading-step active" data-loading-step="1">
+            <span class="loading-step__dot"></span>
+            <span>Preparing access</span>
+          </div>
+          <div class="loading-step" data-loading-step="2">
+            <span class="loading-step__dot"></span>
+            <span>Loading website content</span>
+          </div>
+          <div class="loading-step" data-loading-step="3">
+            <span class="loading-step__dot"></span>
+            <span>Finalizing workspace</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="appShell" hidden>
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">

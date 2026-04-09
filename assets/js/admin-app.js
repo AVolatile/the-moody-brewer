@@ -1,6 +1,10 @@
 (function() {
   'use strict';
 
+  var APP_BOOT_MIN_DURATION = 1500;
+  var APP_BOOT_REFRESH_DELAY = 420;
+  var LOADING_SCREEN_HIDE_DELAY = 320;
+
   var state = {
     auth: {
       configured: true,
@@ -27,7 +31,8 @@
     drawerUploadData: null,
     drawerPreviewUrl: null,
     pendingDelete: null,
-    sidebarOpen: false
+    sidebarOpen: false,
+    loadingHideTimer: null
   };
 
   var refs = {
@@ -41,6 +46,9 @@
     loginSubmitBtn: document.getElementById('loginSubmitBtn'),
     loginError: document.getElementById('loginError'),
     loginMessage: document.getElementById('loginMessage'),
+    loadingScreen: document.getElementById('loadingScreen'),
+    loadingTitle: document.getElementById('loadingTitle'),
+    loadingDetail: document.getElementById('loadingDetail'),
     appShell: document.getElementById('appShell'),
     sidebar: document.getElementById('sidebar'),
     sidebarStatusText: document.getElementById('sidebarStatusText'),
@@ -73,6 +81,8 @@
     navPromotionCount: document.getElementById('navPromotionCount')
   };
 
+  refs.loadingSteps = document.querySelectorAll('[data-loading-step]');
+
   var viewMeta = {
     overview: { title: 'Overview', createLabel: 'Add Menu Item', createEntity: 'item' },
     categories: { title: 'Menu Sections', createLabel: 'Add Section', createEntity: 'category' },
@@ -97,10 +107,100 @@
     return '$' + number.toFixed(2);
   }
 
+  function delay(ms) {
+    return new Promise(function(resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
   function setLoading(button, isLoading) {
     if (!button) return;
     button.classList.toggle('loading', Boolean(isLoading));
     button.disabled = Boolean(isLoading);
+  }
+
+  function clearLoadingScreenTimer() {
+    if (state.loadingHideTimer) {
+      clearTimeout(state.loadingHideTimer);
+      state.loadingHideTimer = null;
+    }
+  }
+
+  function setLoadingStep(step) {
+    Array.prototype.forEach.call(refs.loadingSteps, function(node) {
+      var index = Number(node.getAttribute('data-loading-step') || 0);
+      node.classList.toggle('active', index === step);
+      node.classList.toggle('complete', index < step);
+    });
+  }
+
+  function updateLoadingScreen(title, detail, step) {
+    refs.loadingTitle.textContent = title;
+    refs.loadingDetail.textContent = detail;
+    setLoadingStep(step);
+  }
+
+  function showLoadingScreen(title, detail, step) {
+    clearLoadingScreenTimer();
+    updateLoadingScreen(title, detail, step);
+    refs.loadingScreen.hidden = false;
+    document.body.classList.add('loading-screen-open');
+    requestAnimationFrame(function() {
+      refs.loadingScreen.classList.add('open');
+    });
+  }
+
+  function hideLoadingScreen(immediate) {
+    clearLoadingScreenTimer();
+    document.body.classList.remove('loading-screen-open');
+    refs.loadingScreen.classList.remove('open');
+
+    if (immediate) {
+      refs.loadingScreen.hidden = true;
+      return;
+    }
+
+    state.loadingHideTimer = setTimeout(function() {
+      refs.loadingScreen.hidden = true;
+      state.loadingHideTimer = null;
+    }, LOADING_SCREEN_HIDE_DELAY);
+  }
+
+  function bootstrapWorkspace(options) {
+    var settings = options || {};
+    var startedAt = Date.now();
+
+    showLoadingScreen(
+      settings.restoringSession ? 'Restoring your workspace' : 'Opening your workspace',
+      settings.restoringSession
+        ? 'Loading the latest website content for this session.'
+        : 'Signing you in and syncing the latest website content.',
+      1
+    );
+
+    return delay(180)
+      .then(function() {
+        updateLoadingScreen(
+          'Loading website content',
+          'Pulling in the latest menu sections, items, homepage highlights, and special offers.',
+          2
+        );
+        return loadSnapshot();
+      })
+      .then(function() {
+        updateLoadingScreen(
+          'Finalizing your workspace',
+          'Giving everything a final sync before the page opens.',
+          3
+        );
+        return delay(APP_BOOT_REFRESH_DELAY).then(function() {
+          return loadSnapshot();
+        });
+      })
+      .then(function() {
+        var remaining = APP_BOOT_MIN_DURATION - (Date.now() - startedAt);
+        return remaining > 0 ? delay(remaining) : null;
+      });
   }
 
   function showToast(type, title, message) {
@@ -371,6 +471,7 @@
 
   function showLogin() {
     state.auth.authenticated = false;
+    hideLoadingScreen(true);
     refs.loginScreen.classList.remove('hidden');
     refs.appShell.hidden = true;
     refs.sessionStatus.className = 'status-pill locked';
@@ -384,6 +485,7 @@
     refs.appShell.hidden = false;
     refs.sessionStatus.className = 'status-pill unlocked';
     refs.sessionStatusLabel.textContent = 'Signed In';
+    hideLoadingScreen();
   }
 
   function renderStats() {
@@ -1323,7 +1425,7 @@
 
       if (auth.authenticated) {
         state.auth.authenticated = true;
-        return loadSnapshot().then(function() {
+        return bootstrapWorkspace({ restoringSession: true }).then(function() {
           showApp();
           return null;
         });
@@ -1367,7 +1469,7 @@
       credentialsAccepted = true;
       state.auth.authenticated = true;
       refs.loginPassword.value = '';
-      return loadSnapshot().then(function() {
+      return bootstrapWorkspace().then(function() {
         showApp();
         showToast('success', 'Signed in', 'You can now update the website.');
       });
