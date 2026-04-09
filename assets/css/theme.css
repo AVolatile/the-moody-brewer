@@ -74,6 +74,14 @@ a { color: inherit; }
 @media (min-width: 992px) {
   .after-header-white { margin-top: -50px; padding-top: 50px; }
 }
+.page-intro-section {
+  padding-top: 56px !important;
+}
+@media (min-width: 992px) {
+  .page-intro-section {
+    padding-top: 72px !important;
+  }
+}
 
 /* Standardize bean header height across pages */
 .page-header .d-flex { min-height: 420px !important; }
