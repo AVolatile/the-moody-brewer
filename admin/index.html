@@ -21,7 +21,7 @@
         <img class="login-logo" src="/assets/images/mb_logo.png" alt="Moody Brewer" />
         <h2>Client Admin</h2>
         <p id="loginMessage">Sign in to update the menu, homepage highlights, and special offers.</p>
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
           <div class="login-diagnostics" id="loginDiagnostics" hidden></div>
           <div class="login-input-wrap">
             <i class="fa fa-user"></i>
@@ -162,7 +162,7 @@
           <i class="fa fa-times"></i>
         </button>
       </div>
-      <form id="drawerForm" class="drawer-body"></form>
+      <form id="drawerForm" class="drawer-body" novalidate></form>
       <div class="drawer-footer">
         <button class="btn-secondary" id="drawerCancelBtn" type="button">Cancel</button>
         <button class="btn-primary" id="drawerSubmitBtn" type="submit" form="drawerForm">
@@ -186,6 +186,7 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="/assets/js/admin-validation.js"></script>
     <script src="/assets/js/admin-app.js"></script>
   </body>
 </html>

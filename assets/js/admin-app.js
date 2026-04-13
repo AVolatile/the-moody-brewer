@@ -4,6 +4,7 @@
   var APP_BOOT_MIN_DURATION = 1500;
   var APP_BOOT_REFRESH_DELAY = 420;
   var LOADING_SCREEN_HIDE_DELAY = 320;
+  var AdminValidation = window.AdminValidation || null;
 
   var state = {
     auth: {
@@ -29,7 +30,10 @@
     itemCategoryFilter: 'all',
     drawer: null,
     drawerUploadData: null,
+    drawerUploadFile: null,
+    drawerUploadPending: false,
     drawerPreviewUrl: null,
+    drawerValidationActive: false,
     pendingDelete: null,
     sidebarOpen: false,
     loadingHideTimer: null
@@ -870,6 +874,8 @@
 
   function resetDrawerImageState() {
     state.drawerUploadData = null;
+    state.drawerUploadFile = null;
+    state.drawerUploadPending = false;
     state.drawerPreviewUrl = null;
   }
 
@@ -893,7 +899,7 @@
       '<div class="form-group field-hidden" id="drawerImageUploadGroup">',
         '<label class="form-label">Upload Photo</label>',
         '<label class="img-upload-zone">',
-          '<input id="drawerImageUpload" type="file" accept="image/*">',
+          '<input id="drawerImageUpload" data-validation-field="imageUpload" type="file" accept="image/*">',
           '<div class="img-upload-icon"><i class="fa fa-cloud-upload-alt"></i></div>',
           '<p><strong>Choose a file</strong> or drag one here</p>',
         '</label>',
@@ -1130,14 +1136,17 @@
   }
 
   function openDrawer(entity, mode, id) {
+    var record = id ? getRecord(entity, id) : null;
+
     resetDrawerImageState();
     state.drawer = {
       entity: entity,
       mode: mode,
-      id: id || null
+      id: id || null,
+      record: record || null
     };
+    state.drawerValidationActive = false;
 
-    var record = id ? getRecord(entity, id) : null;
     refs.drawerTitle.textContent = (mode === 'edit' ? 'Edit ' : 'Add ') + {
       category: 'Section',
       item: 'Menu Item',
@@ -1156,6 +1165,8 @@
   }
 
   function closeDrawer() {
+    clearDrawerValidationUI();
+    state.drawerValidationActive = false;
     state.drawer = null;
     resetDrawerImageState();
     refs.drawer.classList.remove('open');
@@ -1164,6 +1175,10 @@
   }
 
   function setupDrawerInteractions(entity, record) {
+    if (record && record.imageUrl) {
+      state.drawerPreviewUrl = record.imageUrl;
+    }
+
     Array.prototype.forEach.call(refs.drawerForm.querySelectorAll('.toggle-wrap'), function(toggleWrap) {
       var checkbox = toggleWrap.querySelector('input[type="checkbox"]');
       var indicator = toggleWrap.querySelector('[data-toggle-indicator]');
@@ -1198,10 +1213,6 @@
         discountType.addEventListener('change', syncDiscountValueVisibility);
         syncDiscountValueVisibility();
       }
-    }
-
-    if (record && record.imageUrl) {
-      state.drawerPreviewUrl = record.imageUrl;
     }
   }
 
@@ -1251,13 +1262,30 @@
 
   function handleDrawerFileUpload(event) {
     var file = event.target.files && event.target.files[0];
-    if (!file) return;
+    var reader;
 
-    var reader = new FileReader();
+    state.drawerUploadFile = file || null;
+    state.drawerUploadData = null;
+
+    if (!file) {
+      state.drawerUploadPending = false;
+      if (state.drawerValidationActive) syncDrawerValidationFeedback();
+      return;
+    }
+
+    state.drawerUploadPending = true;
+    reader = new FileReader();
     reader.onload = function() {
       state.drawerUploadData = reader.result;
+      state.drawerUploadPending = false;
       state.drawerPreviewUrl = reader.result;
       syncImageModeUI();
+      if (state.drawerValidationActive) syncDrawerValidationFeedback();
+    };
+    reader.onerror = function() {
+      state.drawerUploadPending = false;
+      state.drawerUploadData = null;
+      if (state.drawerValidationActive) syncDrawerValidationFeedback();
     };
     reader.readAsDataURL(file);
   }
@@ -1275,8 +1303,286 @@
     return values;
   }
 
-  function buildPayload(entity, mode) {
-    var values = collectFormData(refs.drawerForm);
+  function addFieldError(errors, fieldName, message) {
+    if (!fieldName || !message) return;
+    if (!errors[fieldName]) {
+      errors[fieldName] = [];
+    }
+    if (errors[fieldName].indexOf(message) === -1) {
+      errors[fieldName].push(message);
+    }
+  }
+
+  function getDrawerRecord() {
+    return state.drawer && state.drawer.record ? state.drawer.record : null;
+  }
+
+  function getDrawerValidationContext(values) {
+    var record = getDrawerRecord();
+    var category = null;
+
+    if (state.drawer && state.drawer.entity === 'item') {
+      category = getCategoryById(values.categoryId || (record ? record.categoryId : ''));
+    }
+
+    return {
+      category: category,
+      currentImageUrl: record && record.imageUrl ? record.imageUrl : null,
+      uploadData: state.drawerUploadData,
+      uploadFile: state.drawerUploadFile,
+      uploadPending: state.drawerUploadPending
+    };
+  }
+
+  function validateDrawerForm() {
+    var values;
+    var context;
+    var validation;
+
+    if (!state.drawer || !AdminValidation) {
+      return { isValid: true, errors: {}, values: {} };
+    }
+
+    values = collectFormData(refs.drawerForm);
+    context = getDrawerValidationContext(values);
+    validation = AdminValidation.validateForm(state.drawer.entity, values, context);
+    validation.context = context;
+    return validation;
+  }
+
+  function getDrawerFieldControl(fieldName) {
+    if (!refs.drawerForm) return null;
+    if (fieldName === 'imageUpload') {
+      return document.getElementById('drawerImageUpload');
+    }
+    return refs.drawerForm.querySelector('[name="' + fieldName + '"]');
+  }
+
+  function getDrawerFieldGroup(fieldName) {
+    if (fieldName === 'imageUpload') {
+      return document.getElementById('drawerImageUploadGroup');
+    }
+
+    var control = getDrawerFieldControl(fieldName);
+    if (!control) return null;
+    return control.closest('.form-group') || control.closest('.toggle-wrap') || control.parentNode;
+  }
+
+  function getDrawerInvalidTargets(fieldName) {
+    if (fieldName === 'imageUpload') {
+      var targets = [];
+      var uploadGroup = document.getElementById('drawerImageUploadGroup');
+      var uploadInput = document.getElementById('drawerImageUpload');
+      if (uploadGroup) {
+        var uploadZone = uploadGroup.querySelector('.img-upload-zone');
+        if (uploadZone) targets.push(uploadZone);
+      }
+      if (uploadInput) targets.push(uploadInput);
+      return targets;
+    }
+
+    var control = getDrawerFieldControl(fieldName);
+    return control ? [control] : [];
+  }
+
+  function ensureDrawerErrorNode(fieldName) {
+    var group = getDrawerFieldGroup(fieldName);
+    var control;
+    var node;
+
+    if (!group) return null;
+
+    node = group.querySelector('[data-field-error-for="' + fieldName + '"]');
+    if (!node) {
+      node = document.createElement('div');
+      node.className = 'form-field-error';
+      node.setAttribute('data-field-error-for', fieldName);
+      node.id = 'drawerFieldError-' + fieldName;
+      node.setAttribute('aria-live', 'polite');
+      group.appendChild(node);
+    }
+
+    control = getDrawerFieldControl(fieldName);
+    if (control) {
+      control.setAttribute('aria-describedby', node.id);
+    }
+
+    return node;
+  }
+
+  function clearDrawerValidationUI() {
+    Array.prototype.forEach.call(
+      refs.drawerForm.querySelectorAll('.form-control.is-invalid, .img-upload-zone.is-invalid'),
+      function(node) {
+        node.classList.remove('is-invalid');
+      }
+    );
+
+    Array.prototype.forEach.call(refs.drawerForm.querySelectorAll('[aria-invalid="true"]'), function(node) {
+      node.setAttribute('aria-invalid', 'false');
+    });
+
+    Array.prototype.forEach.call(refs.drawerForm.querySelectorAll('[data-field-error-for]'), function(node) {
+      node.innerHTML = '';
+      node.classList.remove('show');
+    });
+  }
+
+  function setDrawerFieldState(fieldName, messages) {
+    var errorMessages = Array.isArray(messages) ? messages.filter(Boolean) : (messages ? [messages] : []);
+    var hasErrors = errorMessages.length > 0;
+    var node = ensureDrawerErrorNode(fieldName);
+
+    if (node) {
+      node.innerHTML = hasErrors
+        ? errorMessages.map(function(message) {
+            return '<div class="form-field-error__item">' + escapeHtml(message) + '</div>';
+          }).join('')
+        : '';
+      node.classList.toggle('show', hasErrors);
+    }
+
+    Array.prototype.forEach.call(getDrawerInvalidTargets(fieldName), function(target) {
+      if (!target || !target.classList) return;
+      target.classList.toggle('is-invalid', hasErrors);
+      if (typeof target.setAttribute === 'function') {
+        target.setAttribute('aria-invalid', hasErrors ? 'true' : 'false');
+      }
+    });
+  }
+
+  function renderDrawerValidationErrors(errors) {
+    clearDrawerValidationUI();
+
+    Object.keys(errors || {}).forEach(function(fieldName) {
+      setDrawerFieldState(fieldName, errors[fieldName]);
+    });
+  }
+
+  function focusDrawerField(fieldName) {
+    var control = getDrawerFieldControl(fieldName);
+    if (!control || typeof control.focus !== 'function') return;
+
+    if (typeof control.scrollIntoView === 'function') {
+      control.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    control.focus();
+  }
+
+  function focusFirstDrawerError(errors) {
+    var fields = Object.keys(errors || {});
+    if (!fields.length) return;
+    focusDrawerField(fields[0]);
+  }
+
+  function syncDrawerValidationFeedback(focusFirstError) {
+    var validation = validateDrawerForm();
+    renderDrawerValidationErrors(validation.errors);
+
+    if (focusFirstError && !validation.isValid) {
+      focusFirstDrawerError(validation.errors);
+    }
+
+    return validation;
+  }
+
+  function normalizeRequestFieldErrors(fields) {
+    var normalized = {};
+
+    Object.keys(fields || {}).forEach(function(fieldName) {
+      var value = fields[fieldName];
+
+      if (Array.isArray(value)) {
+        value.forEach(function(message) {
+          addFieldError(normalized, fieldName, String(message));
+        });
+        return;
+      }
+
+      if (value) {
+        addFieldError(normalized, fieldName, String(value));
+      }
+    });
+
+    return normalized;
+  }
+
+  function mapRequestErrorToDrawerErrors(error) {
+    var details = error && error.details ? error.details : null;
+    var message = error && error.message ? error.message : '';
+    var mapped = {};
+
+    if (details && details.fields) {
+      return normalizeRequestFieldErrors(details.fields);
+    }
+
+    if (!message) return mapped;
+
+    if (message === 'Category not found.') {
+      addFieldError(mapped, 'categoryId', 'Choose a valid category.');
+    } else if (message === 'Promotion not found.') {
+      addFieldError(mapped, 'promotionId', 'Choose a valid offer.');
+    } else if (message === 'Menu item not found.') {
+      addFieldError(mapped, 'menuItemId', 'Choose a valid menu item.');
+    } else if (message === 'Item name is required.') {
+      addFieldError(mapped, 'name', 'Item name is required.');
+    } else if (message === 'Description is required.') {
+      addFieldError(mapped, 'description', 'Description is required.');
+    } else if (message === 'Description is too long.') {
+      addFieldError(mapped, 'description', 'Description must be 600 characters or fewer.');
+    } else if (message === 'Price is required.') {
+      addFieldError(mapped, 'priceSingle', 'Price is required.');
+    } else if (message === 'At least one category price is required.') {
+      addFieldError(mapped, 'priceMedium', 'Add at least one size price.');
+      addFieldError(mapped, 'priceLarge', 'Add at least one size price.');
+    } else if (message === 'This category requires an image.') {
+      addFieldError(mapped, 'imageMode', 'Image is required.');
+    } else if (message === 'Image URL is invalid.') {
+      addFieldError(mapped, 'imageUrl', 'Please provide a valid image.');
+    } else if (message === 'Uploaded image data is invalid.') {
+      addFieldError(mapped, 'imageUpload', 'Please provide a valid image.');
+    } else if (message === 'Uploaded image exceeds the 2MB limit.') {
+      addFieldError(mapped, 'imageUpload', 'Image must be 2MB or smaller.');
+    } else if (message === 'Display order must be a whole number.' || message === 'Display order is out of range.') {
+      addFieldError(mapped, 'displayOrder', message === 'Display order is out of range.' ? 'Display order must be at least 1.' : message);
+    } else if (message === 'Featured headline is required.' || message === 'Featured headline is too long.') {
+      addFieldError(mapped, 'headline', message === 'Featured headline is too long.' ? 'Headline must be 160 characters or fewer.' : 'Headline is required.');
+    } else if (message === 'Featured subtext is too long.') {
+      addFieldError(mapped, 'subtext', 'Subtext must be 600 characters or fewer.');
+    } else if (message === 'Promotion title is required.' || message === 'Promotion title is too long.') {
+      addFieldError(mapped, 'title', message === 'Promotion title is too long.' ? 'Offer title must be 160 characters or fewer.' : 'Offer title is required.');
+    } else if (message === 'Promotion description is too long.') {
+      addFieldError(mapped, 'description', 'Details must be 600 characters or fewer.');
+    } else if (message === 'Promotion badge text is too long.') {
+      addFieldError(mapped, 'badgeText', 'Offer label must be 80 characters or fewer.');
+    } else if (message === 'Discount value is required.' || message === 'Discount value must be a valid positive amount.') {
+      addFieldError(mapped, 'discountValue', message === 'Discount value is required.' ? 'Amount off is required.' : 'Amount off must be a valid number.');
+    } else if (message === 'Percentage discounts cannot exceed 100.') {
+      addFieldError(mapped, 'discountValue', 'Percentage discounts cannot exceed 100.');
+    } else if (message === 'Start date must use YYYY-MM-DD format.') {
+      addFieldError(mapped, 'startDate', 'Start date must use YYYY-MM-DD format.');
+    } else if (message === 'End date must use YYYY-MM-DD format.') {
+      addFieldError(mapped, 'endDate', 'End date must use YYYY-MM-DD format.');
+    } else if (message === 'Promotion start date must be before the end date.') {
+      addFieldError(mapped, 'startDate', 'Start date must be on or before the end date.');
+      addFieldError(mapped, 'endDate', 'End date must be on or after the start date.');
+    } else if (message === 'Category name is required.' || message === 'Category name is too long.') {
+      addFieldError(mapped, 'name', message === 'Category name is too long.' ? 'Section name must be 120 characters or fewer.' : 'Section name is required.');
+    } else if (message === 'Category description is too long.') {
+      addFieldError(mapped, 'description', 'Description must be 400 characters or fewer.');
+    } else if (message === 'Medium price must be a valid positive amount.') {
+      addFieldError(mapped, 'priceMedium', 'Medium price must be a valid number.');
+    } else if (message === 'Large price must be a valid positive amount.') {
+      addFieldError(mapped, 'priceLarge', 'Large price must be a valid number.');
+    } else if (message === 'Price must be a valid positive amount.') {
+      addFieldError(mapped, 'priceSingle', 'Price must be a valid number.');
+    }
+
+    return mapped;
+  }
+
+  function buildPayload(entity, mode, values) {
+    values = values || collectFormData(refs.drawerForm);
     var payload = {};
 
     if (mode === 'edit' && state.drawer.id) {
@@ -1536,7 +1842,18 @@
   refs.drawerCloseBtn.addEventListener('click', closeDrawer);
   refs.drawerOverlay.addEventListener('click', closeDrawer);
 
+  refs.drawerForm.addEventListener('input', function() {
+    if (!state.drawerValidationActive) return;
+    syncDrawerValidationFeedback();
+  });
+
+  refs.drawerForm.addEventListener('change', function() {
+    if (!state.drawerValidationActive) return;
+    syncDrawerValidationFeedback();
+  });
+
   refs.drawerForm.addEventListener('submit', function(event) {
+    var validation;
     event.preventDefault();
     if (!state.drawer) return;
 
@@ -1544,22 +1861,32 @@
     var mode = state.drawer.mode;
     var endpoint = endpointForEntity(entity);
     var method = mode === 'edit' ? 'PUT' : 'POST';
+    var payload;
 
-    if ((entity === 'item' || entity === 'featured') && document.getElementById('drawerImageMode') && document.getElementById('drawerImageMode').value === 'upload' && !state.drawerUploadData) {
-      showToast('error', 'Image required', 'Choose an image file before saving.');
-      return;
-    }
+    state.drawerValidationActive = true;
+    validation = syncDrawerValidationFeedback(true);
+    if (!validation.isValid) return;
+
+    payload = buildPayload(entity, mode, validation.values);
 
     setLoading(refs.drawerSubmitBtn, true);
 
     apiRequest(endpoint, {
       method: method,
-      body: JSON.stringify(buildPayload(entity, mode))
+      body: JSON.stringify(payload)
     }).then(function() {
       closeDrawer();
       showToast('success', 'Saved', 'Your changes are now reflected on the website.');
       return loadSnapshot();
     }).catch(function(error) {
+      var fieldErrors = mapRequestErrorToDrawerErrors(error);
+
+      if (Object.keys(fieldErrors).length) {
+        renderDrawerValidationErrors(fieldErrors);
+        focusFirstDrawerError(fieldErrors);
+        return;
+      }
+
       showToast('error', 'Save failed', error.message);
     }).finally(function() {
       setLoading(refs.drawerSubmitBtn, false);

@@ -855,12 +855,25 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(196,143,82,.15);
 }
+.form-control.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(193, 81, 96, 0.12);
+}
 .form-control::placeholder { color: var(--text-muted); }
 textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.5; }
 select.form-control { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b78' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
 .field-hidden { display: none !important; }
 
 .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-field-error {
+  display: none;
+  margin-top: 7px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.form-field-error.show { display: block; }
+.form-field-error__item + .form-field-error__item { margin-top: 2px; }
 
 /* Image upload */
 .img-upload-zone {
@@ -871,6 +884,10 @@ select.form-control { appearance: none; cursor: pointer; background-image: url("
 }
 .img-upload-zone:hover, .img-upload-zone.drag-over {
   border-color: var(--accent); background: var(--accent-light);
+}
+.img-upload-zone.is-invalid {
+  border-color: var(--danger);
+  background: rgba(193, 81, 96, 0.06);
 }
 .img-upload-zone input[type="file"] {
   position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
