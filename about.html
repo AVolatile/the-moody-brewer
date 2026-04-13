@@ -82,45 +82,84 @@
 
 
     <!-- About Start -->
-    <div class="container-fluid pb-5 section-light page-intro-section">
+    <div class="container-fluid pb-5 section-light page-intro-section about-page-section">
         <div class="container">
-            <div class="section-title">
-                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">About Us</h4>
-                <h1 class="display-4">Our Story</h1>
-            </div>
-            <div class="row">
-                <div class="col-lg-4 py-0 py-lg-5">
-                    <h1 class="mb-3">Our Story</h1>
-                    <h5 class="mb-3">At <strong>The Moody Brewer</strong>, coffee isn’t just a drink—it's a ritual and a celebration of community.</h5>
-                    <p>We believe in small-batch brewing, warm conversations, and flavors that linger. From our signature lattes to refreshing lemonades and toasty panini, every item is crafted with care. Whether you’re grabbing a quick cup or settling in for a slow morning, we’ve got a seat for you.</p>
-                    <p>Thanks for supporting a local, independent shop. We can’t wait to serve your next favorite sip.</p>
-                    <a href="menu.html" class="btn btn-secondary font-weight-bold py-2 px-4 mt-2">Explore the Menu</a>
+            <section class="about-shell" aria-labelledby="about-story-title">
+                <div class="about-shell__header">
+                    <div class="section-title section-title--about">
+                        <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">About Moody Brewer</h4>
+                        <h1 class="display-4" id="about-story-title">A cozy neighborhood cafe built around small comforts.</h1>
+                    </div>
+                    <p class="about-shell__lede">The Moody Brewer is a small independent cafe made for warm welcomes, thoughtful drinks, and the kind of atmosphere that makes people want to stay a little longer.</p>
                 </div>
-                <div class="col-lg-4 py-5 py-lg-0" style="min-height: 500px;">
-                    <div class="position-relative h-100">
-                        <img class="position-absolute w-100 h-100" src="./assets/images/owner-hero.png" style="object-fit: cover;" alt="Owner at Moody Brewer">
+
+                <div class="about-shell__grid">
+                    <article class="about-story-card">
+                        <div class="about-story-copy">
+                            <p>At <strong>The Moody Brewer</strong>, coffee is more than part of the routine. It is a chance to slow down, catch up, and enjoy something made with care.</p>
+                            <p>We believe in small-batch brewing, warm conversations, and flavors that linger. From signature lattes and refreshing lemonades to toasty panini and fresh bites, the menu is built to feel both comforting and worth coming back for.</p>
+                            <p>Whether you are grabbing a quick cup on the way through town or settling in for a slower morning, the goal stays the same: keep the space welcoming, personal, and easy to love.</p>
+                        </div>
+                        <div class="about-story-actions">
+                            <a href="menu.html" class="btn btn-primary font-weight-bold py-2 px-4">Explore the Menu</a>
+                            <a href="visit.html" class="btn btn-outline-primary font-weight-bold py-2 px-4">Plan a Visit</a>
+                        </div>
+                    </article>
+
+                    <div class="about-visual-card">
+                        <div class="about-visual-frame">
+                            <img src="./assets/images/owner-hero.png" alt="Owner at Moody Brewer">
+                        </div>
+                        <div class="about-visual-note">
+                            <span class="about-visual-note__eyebrow">The Moody Brewer mood</span>
+                            <p>Small-batch coffee, cozy bites, and a local shop that feels personal from the first visit.</p>
+                        </div>
                     </div>
                 </div>
-                <div class="col-lg-4 py-0 py-lg-5">
-                    <h1 class="mb-3">What We Serve</h1>
-                    <p>Small-batch brews, signature lattes, refreshing lemonades, and toasty panini — crafted with care for every mood.</p>
-                    <div class="feature-grid mt-3">
-                      <div class="feature-card">
-                        <h5><i class="fa fa-mug-hot"></i> Signature Lattes</h5>
-                        <p>Standouts like Tiramisu, Dubai, and Strawberry.</p>
-                      </div>
-                      <div class="feature-card">
-                        <h5><i class="fa fa-seedling"></i> Seasonal Refreshers</h5>
-                        <p>From Lavender Lemonade to rotating specials.</p>
-                      </div>
-                      <div class="feature-card">
-                        <h5><i class="fa fa-bread-slice"></i> Fresh Bites</h5>
-                        <p>Toasty panini, pasta salad, and more.</p>
-                      </div>
-                    </div>
-                    <a href="menu.html" class="btn btn-primary font-weight-bold py-2 px-4 mt-3">See Our Menu</a>
+
+                <div class="about-details-grid">
+                    <article class="about-detail-card">
+                        <p class="about-detail-card__eyebrow">What We Serve</p>
+                        <h3>Made for favorite orders</h3>
+                        <div class="about-detail-list">
+                            <div class="about-detail-item">
+                                <div class="about-detail-item__icon"><i class="fa fa-mug-hot"></i></div>
+                                <div>
+                                    <strong>Signature lattes</strong>
+                                    <p>Standouts like Tiramisu, Dubai, and Strawberry alongside everyday espresso favorites.</p>
+                                </div>
+                            </div>
+                            <div class="about-detail-item">
+                                <div class="about-detail-item__icon"><i class="fa fa-seedling"></i></div>
+                                <div>
+                                    <strong>Seasonal refreshers</strong>
+                                    <p>Rotating lemonades, bright pours, and drinks that shift with the mood of the season.</p>
+                                </div>
+                            </div>
+                            <div class="about-detail-item">
+                                <div class="about-detail-item__icon"><i class="fa fa-bread-slice"></i></div>
+                                <div>
+                                    <strong>Fresh bites</strong>
+                                    <p>Toasty panini, pasta salad, and simple food that pairs naturally with a good drink.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="about-detail-card about-detail-card--warm">
+                        <p class="about-detail-card__eyebrow">Why People Come By</p>
+                        <h3>A local stop for routine and discovery</h3>
+                        <p class="about-detail-card__copy">Some guests come for a familiar order, others for whatever feels new that week. Moody Brewer is built to hold both: the comfort of a favorite drink and the fun of finding a new one.</p>
+                        <div class="about-tag-row" aria-label="What guests love">
+                            <span>slow mornings</span>
+                            <span>friendly faces</span>
+                            <span>seasonal pours</span>
+                            <span>fresh bites</span>
+                            <span>small-batch coffee</span>
+                        </div>
+                    </article>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
     <!-- About End -->

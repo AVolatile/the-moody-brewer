@@ -23,23 +23,6 @@
     <link href="css/style.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/css/theme.css">
     <link rel="icon" href="./assets/images/favicon.ico" sizes="any">
-    <style>
-      /* Page-specific polish for a cleaner, bolder layout */
-      .visit-cards .panel { padding: 20px; border-radius: 16px; }
-      .card-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-weight: 700; }
-      .icon-round { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(232,111,146,.12); color: var(--accent); }
-      .address-lines { margin: 0 0 10px; }
-      .address-actions .btn { margin-right: 8px; margin-bottom: 8px; }
-      .hours-list { list-style: none; padding: 0; margin: 0; }
-      .hours-list li { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-      .hours-list li:last-child { border-bottom: 0; }
-      .tip { display: flex; align-items: flex-start; gap: 10px; }
-      .map-panel { border-radius: 16px; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,.12); }
-      .map-panel iframe { border: 0; }
-      @media (max-width: 991.98px) {
-        .visit-cards .col-lg-4 { margin-bottom: 16px; }
-      }
-    </style>
 </head>
 
 <body>
@@ -78,33 +61,52 @@
     <!-- Page Header End -->
 
     <!-- Visit Content Start -->
-    <div class="container-fluid pb-5 section-light after-header-white page-intro-section">
+    <div class="container-fluid pb-5 section-light after-header-white page-intro-section visit-page-section">
       <div class="container">
-        <div class="section-title">
-          <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Plan Your Visit</h4>
-          <h1 class="display-4">Find Us</h1>
-        </div>
+        <section class="visit-shell" aria-labelledby="visit-page-title">
+          <div class="visit-shell__header">
+            <div class="section-title section-title--visit">
+              <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Plan Your Visit</h4>
+              <h1 class="display-4" id="visit-page-title">An easy stop for coffee, comfort, and a slower moment.</h1>
+            </div>
+            <p class="visit-shell__lede">Find the cafe, check the hours, and plan a visit that feels simple from the moment you head over.</p>
+          </div>
 
-        <!-- Info cards -->
-        <div class="row visit-cards">
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <h5 class="card-title"><span class="icon-round"><i class="fa fa-map-marker-alt"></i></span> Address</h5>
-              <p class="address-lines">
+          <div class="visit-shell__grid">
+            <article class="visit-story-card">
+              <p>Moody Brewer is the kind of neighborhood stop you can swing by for a quick cup or settle into when you want a slower start to the day.</p>
+              <p>We keep the experience easy: a welcoming space, thoughtful drinks, fresh bites, and a location right on Main Street in West Warwick.</p>
+              <div class="visit-story-actions">
+                <a class="btn btn-primary font-weight-bold py-2 px-4" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=1219+Main+Street,+West+Warwick,+RI">Get Directions</a>
+                <a class="btn btn-outline-primary font-weight-bold py-2 px-4" href="menu.html">See the Menu</a>
+              </div>
+            </article>
+
+            <article class="visit-story-card visit-story-card--warm">
+              <span class="visit-story-card__eyebrow">Before You Head Over</span>
+              <h3>A few quick notes</h3>
+              <p>Street parking is available nearby, the menu rotates with seasonal drinks and specials, and Instagram is the best place to catch what is pouring that week.</p>
+              <a class="btn btn-secondary mt-2" href="https://www.instagram.com/them00dybrewer/?hl=en" target="_blank" rel="noopener"><i class="fab fa-instagram mr-1"></i> Follow on Instagram</a>
+            </article>
+          </div>
+
+          <div class="visit-info-grid">
+            <article class="visit-info-card">
+              <h3 class="visit-card-title"><span class="visit-icon-round"><i class="fa fa-map-marker-alt"></i></span>Address</h3>
+              <p class="visit-address-lines">
                 The Moody Brewer<br>
                 1219 Main Street<br>
                 West Warwick, RI
               </p>
-              <div class="address-actions">
+              <div class="visit-address-actions">
                 <a class="btn btn-primary" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=1219+Main+Street,+West+Warwick,+RI"><i class="fab fa-google mr-1"></i> Google Maps</a>
                 <a class="btn btn-outline-primary" target="_blank" rel="noopener" href="http://maps.apple.com/?q=1219+Main+Street,+West+Warwick,+RI"><i class="fab fa-apple mr-1"></i> Apple Maps</a>
               </div>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <h5 class="card-title"><span class="icon-round"><i class="fa fa-clock"></i></span> Hours</h5>
-              <ul class="hours-list">
+            </article>
+
+            <article class="visit-info-card">
+              <h3 class="visit-card-title"><span class="visit-icon-round"><i class="fa fa-clock"></i></span>Hours</h3>
+              <ul class="visit-hours-list">
                 <li><span>Sunday</span><strong>8:00 AM – 3:00 PM</strong></li>
                 <li><span>Monday</span><strong>7:00 AM – 4:00 PM</strong></li>
                 <li><span>Tuesday</span><strong>7:00 AM – 4:00 PM</strong></li>
@@ -113,26 +115,29 @@
                 <li><span>Friday</span><strong>7:00 AM – 4:00 PM</strong></li>
                 <li><span>Saturday</span><strong>8:00 AM – 4:00 PM</strong></li>
               </ul>
-            </div>
-          </div>
-          <div class="col-lg-4">
-            <div class="panel h-100">
-              <h5 class="card-title"><span class="icon-round"><i class="fa fa-info-circle"></i></span> Good To Know</h5>
-              <p class="tip"><span class="icon-round" aria-hidden="true"><i class="fa fa-parking"></i></span> Street parking is available nearby.</p>
-              <p class="tip"><span class="icon-round" aria-hidden="true"><i class="fa fa-seedling"></i></span> Seasonal drinks rotate often — ask what’s new!</p>
-              <a class="btn btn-secondary mt-2" href="https://www.instagram.com/them00dybrewer/?hl=en" target="_blank" rel="noopener"><i class="fab fa-instagram mr-1"></i> Follow on Instagram</a>
-            </div>
-          </div>
-        </div>
+            </article>
 
-        <!-- Map -->
-        <div class="row mt-4">
-          <div class="col-12">
-            <div class="map-panel embed-responsive embed-responsive-21by9">
+            <article class="visit-info-card">
+              <h3 class="visit-card-title"><span class="visit-icon-round"><i class="fa fa-info-circle"></i></span>Good To Know</h3>
+              <div class="visit-tip-list">
+                <p class="visit-tip"><span class="visit-icon-round visit-icon-round--small" aria-hidden="true"><i class="fa fa-parking"></i></span><span>Street parking is available nearby.</span></p>
+                <p class="visit-tip"><span class="visit-icon-round visit-icon-round--small" aria-hidden="true"><i class="fa fa-seedling"></i></span><span>Seasonal drinks rotate often, so there is usually something new to try.</span></p>
+                <p class="visit-tip"><span class="visit-icon-round visit-icon-round--small" aria-hidden="true"><i class="fa fa-coffee"></i></span><span>Perfect for a quick stop, a slower morning, or catching up over coffee.</span></p>
+              </div>
+            </article>
+          </div>
+
+          <div class="visit-map-card">
+            <div class="visit-map-card__copy">
+              <span class="visit-map-card__eyebrow">Find The Cafe</span>
+              <h3>Right on Main Street in West Warwick</h3>
+              <p>Use the map for a quick route, then step in for your next favorite drink, a fresh bite, and a space that feels easy to settle into.</p>
+            </div>
+            <div class="visit-map-panel embed-responsive embed-responsive-21by9">
               <iframe class="embed-responsive-item" loading="lazy" allowfullscreen src="https://www.google.com/maps?q=1219+Main+Street,+West+Warwick,+RI&output=embed"></iframe>
             </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
     <!-- Visit Content End -->
