@@ -879,37 +879,134 @@
     state.drawerPreviewUrl = null;
   }
 
+  function contextChipMarkup(label, tone) {
+    return '<span class="context-chip ' + escapeHtml(tone || 'muted') + '">' + escapeHtml(label) + '</span>';
+  }
+
+  function buildItemCategoryContextMarkup(category) {
+    if (!category) {
+      return [
+        '<p class="category-context__copy">',
+          'Choose a section first so pricing labels and photo expectations can be set automatically.',
+        '</p>'
+      ].join('');
+    }
+
+    return [
+      '<div class="category-context__pills">',
+        contextChipMarkup(category.allowMultiPrice ? 'Multiple sizes' : 'Single price', category.allowMultiPrice ? 'info' : 'muted'),
+        contextChipMarkup(category.requireImage ? 'Photo required' : 'Photo optional', category.requireImage ? 'warm' : 'muted'),
+      '</div>',
+      '<p class="category-context__copy">',
+        escapeHtml(
+          category.allowMultiPrice
+            ? 'This section supports size-based pricing. Add one or both values in the pricing section below.'
+            : 'This section uses one price for each item.'
+        ),
+      '</p>'
+    ].join('');
+  }
+
+  function normalizeDraftNumber(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    var number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function buildItemPreviewMarkup(record, categoryId) {
+    record = record || {};
+
+    var category = getCategoryById(categoryId || record.categoryId);
+    var promotion = record.promotionId ? getPromotionById(record.promotionId) : null;
+    var previewRecord = {
+      priceSingle: normalizeDraftNumber(record.priceSingle),
+      priceMedium: normalizeDraftNumber(record.priceMedium),
+      priceLarge: normalizeDraftNumber(record.priceLarge)
+    };
+    var previewPrice = priceSummary(previewRecord, category);
+    var previewName = (record.name || '').trim() || 'New menu item';
+    var previewDescription = (record.description || '').trim() || 'A short, guest-facing description will appear here once you add it.';
+    var previewPills = [
+      '<span class="preview-pill ' + (record.isAvailable === false ? 'muted' : 'success') + '">' + escapeHtml(record.isAvailable === false ? 'Sold out' : 'Available today') + '</span>'
+    ];
+
+    if (record.isFeatured) {
+      previewPills.push('<span class="preview-pill warm">Featured</span>');
+    }
+    if (promotion) {
+      previewPills.push('<span class="preview-pill info">' + escapeHtml(promotion.label || promotion.title) + '</span>');
+    }
+
+    if (previewPrice === '—') {
+      previewPrice = category && category.allowMultiPrice ? 'Add at least one size price' : 'Add a price';
+    }
+
+    return [
+      '<div class="item-composer-card__eyebrow">', escapeHtml(category ? category.name : 'Choose a section'), '</div>',
+      '<div class="item-composer-card__name">', escapeHtml(previewName), '</div>',
+      '<p class="item-composer-card__description">', escapeHtml(previewDescription), '</p>',
+      '<div class="item-composer-card__footer">',
+        '<div class="item-composer-card__price">', escapeHtml(previewPrice), '</div>',
+        '<div class="item-composer-card__pills">', previewPills.join(''), '</div>',
+      '</div>'
+    ].join('');
+  }
+
   function imageFieldMarkup(recordImageUrl) {
     var hasImage = Boolean(recordImageUrl);
     return [
-      '<div class="form-group">',
-        '<label class="form-label" for="drawerImageMode">Image</label>',
-        '<select class="form-control" id="drawerImageMode" name="imageMode">',
-          hasImage ? '<option value="keep">Keep current image</option>' : '',
-          '<option value="url"', hasImage ? '' : ' selected', '>Use image link</option>',
-          '<option value="upload">Upload photo</option>',
-          '<option value="remove">Remove photo</option>',
-        '</select>',
-        '<p class="form-hint">Paste an image link or upload a photo up to 2MB.</p>',
-      '</div>',
-      '<div class="form-group" id="drawerImageUrlGroup">',
-        '<label class="form-label" for="drawerImageUrl">Image Link</label>',
-        '<input class="form-control" id="drawerImageUrl" name="imageUrl" type="text" value="' + escapeHtml(recordImageUrl || '') + '" placeholder="https://... or /assets/images/...">',
-      '</div>',
-      '<div class="form-group field-hidden" id="drawerImageUploadGroup">',
-        '<label class="form-label">Upload Photo</label>',
-        '<label class="img-upload-zone">',
-          '<input id="drawerImageUpload" data-validation-field="imageUpload" type="file" accept="image/*">',
-          '<div class="img-upload-icon"><i class="fa fa-cloud-upload-alt"></i></div>',
-          '<p><strong>Choose a file</strong> or drag one here</p>',
-        '</label>',
-      '</div>',
-      '<div class="form-group', hasImage ? '' : ' field-hidden', '" id="drawerImagePreviewGroup">',
-        '<label class="form-label">Preview</label>',
-        '<div class="img-preview-wrap">',
-          '<img id="drawerImagePreview" src="' + escapeHtml(recordImageUrl || '') + '" alt="Preview">',
+      '<section class="form-section form-section--image">',
+        '<div class="form-section__header">',
+          '<span class="form-section__eyebrow">Photo</span>',
+          '<div class="form-section__heading">',
+            '<h4 class="form-section__title">Menu image</h4>',
+            '<span class="form-section__tag">Required</span>',
+          '</div>',
+          '<p class="form-section__intro">Add a clean photo for the menu card. You can keep the current image, paste a link, or upload a new file up to 2MB.</p>',
         '</div>',
-      '</div>'
+        '<div class="image-field-layout">',
+          '<div class="image-input-panel">',
+            '<div class="form-group">',
+              '<label class="form-label" for="drawerImageMode">Image Source <span>*</span></label>',
+              '<select class="form-control" id="drawerImageMode" name="imageMode">',
+                hasImage ? '<option value="keep">Keep current image</option>' : '',
+                '<option value="url"', hasImage ? '' : ' selected', '>Use image link</option>',
+                '<option value="upload">Upload photo</option>',
+                '<option value="remove">Remove photo</option>',
+              '</select>',
+            '</div>',
+            '<div class="form-group" id="drawerImageUrlGroup">',
+              '<label class="form-label" for="drawerImageUrl">Image Link <span>*</span></label>',
+              '<input class="form-control" id="drawerImageUrl" name="imageUrl" type="text" value="' + escapeHtml(recordImageUrl || '') + '" placeholder="https://... or /assets/images/...">',
+              '<p class="form-hint">Use a full image URL or a site asset path.</p>',
+            '</div>',
+            '<div class="form-group field-hidden" id="drawerImageUploadGroup">',
+              '<label class="form-label" for="drawerImageUpload">Upload Photo <span>*</span></label>',
+              '<label class="img-upload-zone">',
+                '<input id="drawerImageUpload" data-validation-field="imageUpload" type="file" accept="image/*">',
+                '<div class="img-upload-icon"><i class="fa fa-cloud-upload-alt"></i></div>',
+                '<p><strong>Choose a file</strong><span> or drag one here</span></p>',
+                '<small>Recommended: crisp landscape photo, 2MB max.</small>',
+              '</label>',
+              '<div class="image-upload-meta" id="drawerImageUploadMeta">No file selected yet.</div>',
+            '</div>',
+          '</div>',
+          '<div class="image-preview-panel" id="drawerImagePreviewGroup">',
+            '<span class="image-preview-panel__eyebrow">Preview</span>',
+            '<div class="image-preview-frame">',
+              '<div class="img-preview-wrap', hasImage ? '' : ' field-hidden', '" id="drawerImageAssetWrap">',
+                '<img id="drawerImagePreview" src="' + escapeHtml(recordImageUrl || '') + '" alt="Preview">',
+              '</div>',
+              '<div class="img-preview-empty', hasImage ? ' field-hidden' : '', '" id="drawerImageEmptyState">',
+                '<i class="fa fa-image"></i>',
+                '<strong>No image selected yet</strong>',
+                '<p>Add a photo to preview how this item will appear in the admin and on the live menu.</p>',
+              '</div>',
+            '</div>',
+            '<p class="image-preview-caption">Preview updates as you paste a link or upload a file.</p>',
+          '</div>',
+        '</div>',
+      '</section>'
     ].join('');
   }
 
@@ -957,44 +1054,84 @@
   function itemFormMarkup(record) {
     record = record || {};
     var categoryId = record.categoryId || (state.snapshot.categories[0] ? state.snapshot.categories[0].id : '');
+    var category = getCategoryById(categoryId);
     return [
-      '<div class="form-group">',
-        '<label class="form-label" for="itemCategory">Category <span>*</span></label>',
-        '<select class="form-control" id="itemCategory" name="categoryId">',
-          state.snapshot.categories.map(function(category) {
-            return option(category.id, category.name, Number(category.id) === Number(categoryId));
-          }).join(''),
-        '</select>',
-      '</div>',
-      '<div class="form-group">',
-        '<label class="form-label" for="itemName">Item Name <span>*</span></label>',
-        '<input class="form-control" id="itemName" name="name" type="text" value="' + escapeHtml(record.name || '') + '" required>',
-      '</div>',
-      '<div class="form-group">',
-        '<label class="form-label" for="itemDescription">Description</label>',
-        '<textarea class="form-control" id="itemDescription" name="description">' + escapeHtml(record.description || '') + '</textarea>',
-      '</div>',
-      '<div id="itemPriceFields">',
-        itemPriceFieldsMarkup(record, categoryId),
-      '</div>',
-      '<div class="form-group">',
-        '<label class="form-label" for="itemPromotion">Offer</label>',
-        '<select class="form-control" id="itemPromotion" name="promotionId">',
-          option('', 'No offer', !record.promotionId),
-          state.snapshot.promotions.map(function(promotion) {
-            return option(promotion.id, promotion.title, Number(promotion.id) === Number(record.promotionId));
-          }).join(''),
-        '</select>',
-      '</div>',
-      '<div class="price-row">',
-        '<div class="form-group">',
-          '<label class="form-label" for="itemDisplayOrder">Order on Page</label>',
-          '<input class="form-control" id="itemDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
-        '</div>',
-      '</div>',
-      imageFieldMarkup(record.imageUrl),
-      toggleMarkup('Available today', 'Turn this off when an item is temporarily unavailable.', 'isAvailable', record.isAvailable !== false),
-      toggleMarkup('Highlight in the menu', 'Use this to give the item a little extra attention.', 'isFeatured', record.isFeatured)
+      '<div class="form-stack form-stack--item">',
+        '<section class="form-section form-section--hero">',
+          '<div class="form-section__header">',
+            '<span class="form-section__eyebrow">Menu item</span>',
+            '<h4 class="form-section__title">Build the guest-facing card</h4>',
+            '<p class="form-section__intro">Add the core details first, then layer in pricing, photo, and visibility settings.</p>',
+          '</div>',
+          '<div class="item-composer-card" id="itemComposerPreview">',
+            buildItemPreviewMarkup(record, categoryId),
+          '</div>',
+        '</section>',
+        '<section class="form-section">',
+          '<div class="form-section__header">',
+            '<span class="form-section__eyebrow">Basics</span>',
+            '<h4 class="form-section__title">Core menu details</h4>',
+            '<p class="form-section__intro">These are the fields guests rely on most when scanning the menu.</p>',
+          '</div>',
+          '<div class="form-group">',
+            '<label class="form-label" for="itemCategory">Category <span>*</span></label>',
+            '<select class="form-control" id="itemCategory" name="categoryId">',
+              state.snapshot.categories.map(function(menuCategory) {
+                return option(menuCategory.id, menuCategory.name, Number(menuCategory.id) === Number(categoryId));
+              }).join(''),
+            '</select>',
+            '<p class="form-hint">The selected section controls pricing labels and photo expectations.</p>',
+          '</div>',
+          '<div class="category-context" id="itemCategoryContext">',
+            buildItemCategoryContextMarkup(category),
+          '</div>',
+          '<div class="form-group">',
+            '<label class="form-label" for="itemName">Item Name <span>*</span></label>',
+            '<input class="form-control" id="itemName" name="name" type="text" value="' + escapeHtml(record.name || '') + '" placeholder="Example: Cinnamon Honey Latte" required>',
+          '</div>',
+          '<div class="form-group">',
+            '<label class="form-label" for="itemDescription">Description <span>*</span></label>',
+            '<textarea class="form-control" id="itemDescription" name="description" placeholder="Write a short guest-facing description.">' + escapeHtml(record.description || '') + '</textarea>',
+          '</div>',
+        '</section>',
+        '<section class="form-section">',
+          '<div class="form-section__header">',
+            '<span class="form-section__eyebrow">Pricing</span>',
+            '<h4 class="form-section__title">Pricing and placement</h4>',
+            '<p class="form-section__intro">Pricing follows the selected section. Promotion and order controls stay here so placement decisions are made together.</p>',
+          '</div>',
+          '<div id="itemPriceFields">',
+            itemPriceFieldsMarkup(record, categoryId),
+          '</div>',
+          '<div class="form-grid form-grid--split">',
+            '<div class="form-group">',
+              '<label class="form-label" for="itemPromotion">Offer</label>',
+              '<select class="form-control" id="itemPromotion" name="promotionId">',
+                option('', 'No offer', !record.promotionId),
+                state.snapshot.promotions.map(function(promotion) {
+                  return option(promotion.id, promotion.title, Number(promotion.id) === Number(record.promotionId));
+                }).join(''),
+              '</select>',
+            '</div>',
+            '<div class="form-group">',
+              '<label class="form-label" for="itemDisplayOrder">Order on Page</label>',
+              '<input class="form-control" id="itemDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '" placeholder="Automatic">',
+            '</div>',
+          '</div>',
+        '</section>',
+        imageFieldMarkup(record.imageUrl),
+        '<section class="form-section">',
+          '<div class="form-section__header">',
+            '<span class="form-section__eyebrow">Visibility</span>',
+            '<h4 class="form-section__title">Publishing settings</h4>',
+            '<p class="form-section__intro">Decide whether the item is currently available and whether it should receive extra emphasis in the menu.</p>',
+          '</div>',
+          '<div class="toggle-grid">',
+            toggleMarkup('Available today', 'Turn this off when an item is temporarily unavailable.', 'isAvailable', record.isAvailable !== false),
+            toggleMarkup('Highlight in the menu', 'Use this to give the item a little extra attention.', 'isFeatured', record.isFeatured),
+          '</div>',
+        '</section>',
+      '</div>'
     ].join('');
   }
 
@@ -1159,6 +1296,7 @@
     if (entity === 'featured') refs.drawerForm.innerHTML = featuredFormMarkup(record);
     if (entity === 'promotion') refs.drawerForm.innerHTML = promotionFormMarkup(record);
 
+    refs.drawer.classList.toggle('drawer-wide', entity === 'item');
     refs.drawer.classList.add('open');
     refs.drawerOverlay.classList.add('open');
     setupDrawerInteractions(entity, record);
@@ -1171,6 +1309,7 @@
     resetDrawerImageState();
     refs.drawer.classList.remove('open');
     refs.drawerOverlay.classList.remove('open');
+    refs.drawer.classList.remove('drawer-wide');
     refs.drawerForm.innerHTML = '';
   }
 
@@ -1191,20 +1330,23 @@
     if (imageMode) {
       imageMode.addEventListener('change', syncImageModeUI);
       var fileInput = document.getElementById('drawerImageUpload');
+      var preview = document.getElementById('drawerImagePreview');
       if (fileInput) {
         fileInput.addEventListener('change', handleDrawerFileUpload);
+      }
+      if (preview) {
+        preview.addEventListener('error', function() {
+          setDrawerImagePreviewVisibility(false);
+        });
+        preview.addEventListener('load', function() {
+          setDrawerImagePreviewVisibility(true);
+        });
       }
       syncImageModeUI();
     }
 
     if (entity === 'item') {
-      var itemCategory = document.getElementById('itemCategory');
-      if (itemCategory) {
-        itemCategory.addEventListener('change', function() {
-          refreshItemPriceFields();
-        });
-        refreshItemPriceFields();
-      }
+      syncItemComposerUI();
     }
 
     if (entity === 'promotion') {
@@ -1217,7 +1359,10 @@
   }
 
   function refreshItemPriceFields() {
-    var categoryId = document.getElementById('itemCategory').value;
+    var categoryField = document.getElementById('itemCategory');
+    if (!categoryField) return;
+
+    var categoryId = categoryField.value;
     var category = getCategoryById(categoryId);
     var singleRow = document.getElementById('singlePriceRow');
     var multiRow = document.getElementById('multiPriceRow');
@@ -1235,6 +1380,49 @@
     multiRow.classList.toggle('field-hidden', !category.allowMultiPrice);
   }
 
+  function syncItemCategoryContext() {
+    var categoryField = document.getElementById('itemCategory');
+    var context = document.getElementById('itemCategoryContext');
+    var category = categoryField ? getCategoryById(categoryField.value) : null;
+
+    if (!context) return;
+    context.innerHTML = buildItemCategoryContextMarkup(category);
+  }
+
+  function buildItemPreviewDraft() {
+    var values = collectFormData(refs.drawerForm);
+
+    return {
+      categoryId: values.categoryId,
+      name: values.name,
+      description: values.description,
+      priceSingle: values.priceSingle,
+      priceMedium: values.priceMedium,
+      priceLarge: values.priceLarge,
+      promotionId: values.promotionId,
+      isAvailable: values.isAvailable,
+      isFeatured: values.isFeatured
+    };
+  }
+
+  function syncItemComposerPreview() {
+    var preview = document.getElementById('itemComposerPreview');
+    var draft;
+
+    if (!preview) return;
+
+    draft = buildItemPreviewDraft();
+    preview.innerHTML = buildItemPreviewMarkup(draft, draft.categoryId);
+  }
+
+  function syncItemComposerUI() {
+    if (!state.drawer || state.drawer.entity !== 'item') return;
+
+    refreshItemPriceFields();
+    syncItemCategoryContext();
+    syncItemComposerPreview();
+  }
+
   function syncDiscountValueVisibility() {
     var discountType = document.getElementById('promotionDiscountType');
     var group = document.getElementById('discountValueGroup');
@@ -1242,22 +1430,62 @@
     group.classList.toggle('field-hidden', discountType.value === 'text');
   }
 
+  function setDrawerImagePreviewVisibility(hasPreview) {
+    var assetWrap = document.getElementById('drawerImageAssetWrap');
+    var emptyState = document.getElementById('drawerImageEmptyState');
+
+    if (assetWrap) assetWrap.classList.toggle('field-hidden', !hasPreview);
+    if (emptyState) emptyState.classList.toggle('field-hidden', hasPreview);
+  }
+
+  function syncImageUploadMeta() {
+    var meta = document.getElementById('drawerImageUploadMeta');
+
+    if (!meta) return;
+
+    if (state.drawerUploadFile) {
+      meta.textContent = state.drawerUploadFile.name;
+      meta.classList.add('has-file');
+      return;
+    }
+
+    meta.textContent = 'No file selected yet.';
+    meta.classList.remove('has-file');
+  }
+
   function syncImageModeUI() {
     var mode = document.getElementById('drawerImageMode');
     var urlGroup = document.getElementById('drawerImageUrlGroup');
     var uploadGroup = document.getElementById('drawerImageUploadGroup');
-    var previewGroup = document.getElementById('drawerImagePreviewGroup');
     var preview = document.getElementById('drawerImagePreview');
+    var imageUrlInput = document.getElementById('drawerImageUrl');
     var currentMode = mode ? mode.value : 'keep';
+    var previewUrl = '';
 
     if (urlGroup) urlGroup.classList.toggle('field-hidden', currentMode !== 'url');
     if (uploadGroup) uploadGroup.classList.toggle('field-hidden', currentMode !== 'upload');
 
-    if (previewGroup) {
-      var hasPreview = Boolean(state.drawerPreviewUrl);
-      previewGroup.classList.toggle('field-hidden', !(hasPreview && currentMode !== 'remove'));
-      if (preview && hasPreview) preview.src = state.drawerPreviewUrl;
+    if (currentMode === 'url') {
+      previewUrl = imageUrlInput ? imageUrlInput.value.trim() : '';
+    } else if (currentMode !== 'remove') {
+      previewUrl = state.drawerPreviewUrl || '';
     }
+
+    if (!preview) {
+      syncImageUploadMeta();
+      return;
+    }
+
+    if (!previewUrl) {
+      preview.removeAttribute('src');
+      setDrawerImagePreviewVisibility(false);
+      syncImageUploadMeta();
+      return;
+    }
+
+    preview.src = previewUrl;
+    setDrawerImagePreviewVisibility(true);
+    syncImageUploadMeta();
   }
 
   function handleDrawerFileUpload(event) {
@@ -1843,11 +2071,23 @@
   refs.drawerOverlay.addEventListener('click', closeDrawer);
 
   refs.drawerForm.addEventListener('input', function() {
+    if (state.drawer && state.drawer.entity === 'item') {
+      syncItemComposerUI();
+    }
+    if (state.drawer && (state.drawer.entity === 'item' || state.drawer.entity === 'featured')) {
+      syncImageModeUI();
+    }
     if (!state.drawerValidationActive) return;
     syncDrawerValidationFeedback();
   });
 
   refs.drawerForm.addEventListener('change', function() {
+    if (state.drawer && state.drawer.entity === 'item') {
+      syncItemComposerUI();
+    }
+    if (state.drawer && (state.drawer.entity === 'item' || state.drawer.entity === 'featured')) {
+      syncImageModeUI();
+    }
     if (!state.drawerValidationActive) return;
     syncDrawerValidationFeedback();
   });
