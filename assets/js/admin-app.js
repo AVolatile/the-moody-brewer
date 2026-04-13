@@ -1529,12 +1529,27 @@
 
   function addFieldError(errors, fieldName, message) {
     if (!fieldName || !message) return;
+    var normalizedMessage = String(message).trim();
+
+    if (state.drawer && state.drawer.entity === 'item' && fieldName === 'displayOrder') {
+      normalizedMessage = normalizedMessage.replace(/^Display order/i, 'Sort order');
+    }
+
+    if (!normalizedMessage) return;
     if (!errors[fieldName]) {
       errors[fieldName] = [];
     }
-    if (errors[fieldName].indexOf(message) === -1) {
-      errors[fieldName].push(message);
+    if (errors[fieldName].indexOf(normalizedMessage) === -1) {
+      errors[fieldName].push(normalizedMessage);
     }
+  }
+
+  function hasValue(value) {
+    return !(value == null || (typeof value === 'string' && value.trim() === ''));
+  }
+
+  function normalizeOptionalValue(value) {
+    return hasValue(value) ? value : undefined;
   }
 
   function getDrawerRecord() {
@@ -1731,6 +1746,132 @@
     return normalized;
   }
 
+  function listFieldErrorMessages(errors) {
+    var seen = {};
+    var messages = [];
+
+    Object.keys(errors || {}).forEach(function(fieldName) {
+      var fieldMessages = errors[fieldName];
+
+      (Array.isArray(fieldMessages) ? fieldMessages : [fieldMessages]).forEach(function(message) {
+        var normalizedMessage = String(message || '').trim();
+        if (!normalizedMessage || seen[normalizedMessage]) return;
+        seen[normalizedMessage] = true;
+        messages.push(normalizedMessage);
+      });
+    });
+
+    return messages;
+  }
+
+  function escapeRegExp(value) {
+    return String(value == null ? '' : value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function lowerCaseFirstCharacter(value) {
+    var text = String(value == null ? '' : value).trim();
+    if (!text) return '';
+    return text.charAt(0).toLowerCase() + text.slice(1);
+  }
+
+  function getDrawerFieldLabel(fieldName) {
+    var control = getDrawerFieldControl(fieldName);
+    var labelNode;
+    var labelText;
+    var fallbackLabels = {
+      badgeText: 'Offer label',
+      categoryId: state.drawer && state.drawer.entity === 'item' ? 'Menu section' : 'Category',
+      description: state.drawer && state.drawer.entity === 'promotion' ? 'Details' : 'Description',
+      discountValue: 'Amount off',
+      displayOrder: state.drawer && state.drawer.entity === 'item' ? 'Sort order' : 'Display order',
+      endDate: 'End date',
+      headline: 'Headline',
+      imageMode: 'Photo source',
+      imageUpload: 'Upload photo',
+      imageUrl: 'Image link',
+      menuItemId: 'Linked menu item',
+      name: state.drawer && state.drawer.entity === 'category' ? 'Section name' : state.drawer && state.drawer.entity === 'item' ? 'Item name' : 'Name',
+      priceLarge: 'Large price',
+      priceMedium: 'Medium price',
+      priceSingle: 'Price',
+      promotionId: 'Offer',
+      startDate: 'Start date',
+      subtext: 'Subtext',
+      title: state.drawer && state.drawer.entity === 'promotion' ? 'Offer title' : 'Title'
+    };
+
+    if (control && control.id && refs.drawerForm) {
+      labelNode = refs.drawerForm.querySelector('label[for="' + control.id + '"]');
+      if (labelNode) {
+        labelText = labelNode.textContent.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+        if (labelText) return labelText;
+      }
+    }
+
+    return fallbackLabels[fieldName] || fieldName;
+  }
+
+  function formatFieldErrorToastMessage(fieldName, message) {
+    var label = getDrawerFieldLabel(fieldName);
+    var normalizedMessage = String(message == null ? '' : message).trim();
+    var labelPrefixPattern;
+
+    if (!normalizedMessage) return '';
+
+    labelPrefixPattern = new RegExp('^' + escapeRegExp(label) + '(?:\\b|\\s*:?)', 'i');
+    if (labelPrefixPattern.test(normalizedMessage)) {
+      normalizedMessage = normalizedMessage.replace(labelPrefixPattern, '').trim();
+    }
+
+    normalizedMessage = normalizedMessage.replace(/^[:\-]\s*/, '');
+
+    if (/^is required\.$/i.test(normalizedMessage)) {
+      normalizedMessage = 'required.';
+    } else if (/^is too long\.$/i.test(normalizedMessage)) {
+      normalizedMessage = 'too long.';
+    } else {
+      normalizedMessage = lowerCaseFirstCharacter(normalizedMessage);
+    }
+
+    return label + ': ' + normalizedMessage;
+  }
+
+  function listFieldErrorToastMessages(errors) {
+    var seen = {};
+    var messages = [];
+
+    Object.keys(errors || {}).forEach(function(fieldName) {
+      var fieldMessages = errors[fieldName];
+
+      (Array.isArray(fieldMessages) ? fieldMessages : [fieldMessages]).forEach(function(message) {
+        var toastMessage = formatFieldErrorToastMessage(fieldName, message);
+        if (!toastMessage || seen[toastMessage]) return;
+        seen[toastMessage] = true;
+        messages.push(toastMessage);
+      });
+    });
+
+    return messages;
+  }
+
+  function buildDrawerErrorToastMessage(error, fieldErrors) {
+    var messages = listFieldErrorToastMessages(fieldErrors);
+
+    if (messages.length === 1) {
+      return messages[0];
+    }
+    if (messages.length > 1) {
+      return messages.slice(0, 2).join(' ') + (messages.length > 2 ? ' Check the highlighted fields for the rest.' : '');
+    }
+    if (error && error.message && error.message !== 'Server error') {
+      return error.message;
+    }
+    if (state.drawer && state.drawer.entity === 'item') {
+      return 'The item could not be saved. Check the highlighted fields and try again.';
+    }
+    return 'The form could not be saved. Check the highlighted fields and try again.';
+  }
+
   function mapRequestErrorToDrawerErrors(error) {
     var details = error && error.details ? error.details : null;
     var message = error && error.message ? error.message : '';
@@ -1818,7 +1959,7 @@
       payload.slug = values.slug;
       payload.description = values.description;
       payload.layout = values.layout;
-      payload.displayOrder = values.displayOrder;
+      payload.displayOrder = normalizeOptionalValue(values.displayOrder);
       payload.priceLabels = [values.priceLabelOne, values.priceLabelTwo].filter(Boolean);
       payload.allowMultiPrice = values.allowMultiPrice;
       payload.requireImage = values.requireImage;
@@ -1833,7 +1974,7 @@
       payload.priceMedium = values.priceMedium;
       payload.priceLarge = values.priceLarge;
       payload.promotionId = values.promotionId;
-      payload.displayOrder = values.displayOrder;
+      payload.displayOrder = normalizeOptionalValue(values.displayOrder);
       payload.isAvailable = values.isAvailable;
       payload.isFeatured = values.isFeatured;
       payload.imageMode = values.imageMode;
@@ -1847,7 +1988,7 @@
       payload.headline = values.headline;
       payload.subtext = values.subtext;
       payload.promotionId = values.promotionId;
-      payload.displayOrder = values.displayOrder;
+      payload.displayOrder = normalizeOptionalValue(values.displayOrder);
       payload.isActive = values.isActive;
       payload.imageMode = values.imageMode;
       if (values.imageMode === 'url') payload.imageUrl = values.imageUrl;
@@ -1863,7 +2004,7 @@
       payload.discountValue = values.discountValue;
       payload.startDate = values.startDate;
       payload.endDate = values.endDate;
-      payload.displayOrder = values.displayOrder;
+      payload.displayOrder = normalizeOptionalValue(values.displayOrder);
       payload.isActive = values.isActive;
       return payload;
     }
@@ -2120,10 +2261,11 @@
       if (Object.keys(fieldErrors).length) {
         renderDrawerValidationErrors(fieldErrors);
         focusFirstDrawerError(fieldErrors);
+        showToast('error', 'Save failed', buildDrawerErrorToastMessage(error, fieldErrors));
         return;
       }
 
-      showToast('error', 'Save failed', error.message);
+      showToast('error', 'Save failed', buildDrawerErrorToastMessage(error, fieldErrors));
     }).finally(function() {
       setLoading(refs.drawerSubmitBtn, false);
     });

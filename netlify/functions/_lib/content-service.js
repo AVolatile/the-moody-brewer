@@ -103,6 +103,10 @@ function normalizeBoolean(value, fallback) {
   return Boolean(value);
 }
 
+function hasSubmittedValue(value) {
+  return !(value === undefined || value === null || (typeof value === 'string' && value.trim() === ''));
+}
+
 function normalizePriceLabels(value) {
   if (!value) return [];
   const labels = Array.isArray(value) ? value : String(value).split(',');
@@ -793,7 +797,7 @@ async function createCategory(payload) {
   const slug = slugify(payload.slug || name);
   if (!slug) throw createHttpError(400, 'Category slug could not be created.');
 
-  const displayOrder = payload.displayOrder != null
+  const displayOrder = hasSubmittedValue(payload.displayOrder)
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('menu_categories');
 
@@ -842,7 +846,7 @@ async function updateCategory(payload) {
     price_labels: payload.priceLabels !== undefined ? JSON.stringify(normalizePriceLabels(payload.priceLabels)) : undefined,
     require_image: payload.requireImage !== undefined ? normalizeBoolean(payload.requireImage, false) : undefined,
     allow_multi_price: payload.allowMultiPrice !== undefined ? normalizeBoolean(payload.allowMultiPrice, false) : undefined,
-    display_order: payload.displayOrder !== undefined
+    display_order: hasSubmittedValue(payload.displayOrder)
       ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
       : undefined
   });
@@ -890,7 +894,7 @@ async function createMenuItem(payload) {
     await assertPromotionExists(promotionId);
   }
 
-  const displayOrder = payload.displayOrder != null
+  const displayOrder = hasSubmittedValue(payload.displayOrder)
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('menu_items', 'WHERE category_id = $1', [categoryId]);
 
@@ -949,7 +953,7 @@ async function updateMenuItem(payload) {
     await assertPromotionExists(promotionId);
   }
 
-  const displayOrder = payload.displayOrder !== undefined
+  const displayOrder = hasSubmittedValue(payload.displayOrder)
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : nextCategoryId !== current.category_id
       ? await nextDisplayOrder('menu_items', 'WHERE category_id = $1', [nextCategoryId])
@@ -1005,7 +1009,7 @@ async function createFeaturedItem(payload) {
     await assertPromotionExists(promotionId);
   }
 
-  const displayOrder = payload.displayOrder != null
+  const displayOrder = hasSubmittedValue(payload.displayOrder)
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('featured_items');
 
@@ -1067,7 +1071,7 @@ async function updateFeaturedItem(payload) {
     image_data: imageFields.image_data,
     image_mime: imageFields.image_mime,
     promotion_id: promotionId,
-    display_order: payload.displayOrder !== undefined
+    display_order: hasSubmittedValue(payload.displayOrder)
       ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
       : undefined,
     is_active: payload.isActive !== undefined ? normalizeBoolean(payload.isActive, true) : undefined
@@ -1105,7 +1109,7 @@ async function createPromotion(payload) {
   const endDate = normalizeDate(payload.endDate, 'End date');
   ensureDateRange(startDate, endDate);
 
-  const displayOrder = payload.displayOrder != null
+  const displayOrder = hasSubmittedValue(payload.displayOrder)
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('promotions');
 
@@ -1173,7 +1177,7 @@ async function updatePromotion(payload) {
     start_date: startDate,
     end_date: endDate,
     is_active: payload.isActive !== undefined ? normalizeBoolean(payload.isActive, true) : undefined,
-    display_order: payload.displayOrder !== undefined
+    display_order: hasSubmittedValue(payload.displayOrder)
       ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
       : undefined
   });

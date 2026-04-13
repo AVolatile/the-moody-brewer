@@ -5,6 +5,29 @@ const DEFAULT_HEADERS = {
   'Cache-Control': 'no-store'
 };
 
+const DATABASE_FIELD_MAP = {
+  badge_text: { field: 'badgeText', label: 'Offer label' },
+  category_id: { field: 'categoryId', label: 'Category' },
+  description: { field: 'description', label: 'Description' },
+  discount_value: { field: 'discountValue', label: 'Amount off' },
+  display_order: { field: 'displayOrder', label: 'Display order' },
+  end_date: { field: 'endDate', label: 'End date' },
+  headline: { field: 'headline', label: 'Headline' },
+  image_data: { field: 'imageUpload', label: 'Image upload' },
+  image_mime: { field: 'imageUpload', label: 'Image upload' },
+  image_url: { field: 'imageUrl', label: 'Image link' },
+  menu_item_id: { field: 'menuItemId', label: 'Linked menu item' },
+  name: { field: 'name', label: 'Name' },
+  price_large: { field: 'priceLarge', label: 'Large price' },
+  price_medium: { field: 'priceMedium', label: 'Medium price' },
+  price_single: { field: 'priceSingle', label: 'Price' },
+  promotion_id: { field: 'promotionId', label: 'Offer' },
+  slug: { field: 'slug', label: 'Slug' },
+  start_date: { field: 'startDate', label: 'Start date' },
+  subtext: { field: 'subtext', label: 'Subtext' },
+  title: { field: 'title', label: 'Title' }
+};
+
 function json(statusCode, body, headers) {
   return {
     statusCode,
@@ -38,6 +61,51 @@ function getDatabaseErrorMessage(error) {
   return null;
 }
 
+function getDatabaseFieldMeta(error) {
+  if (!error || !error.column) return null;
+  return DATABASE_FIELD_MAP[error.column] || null;
+}
+
+function buildFieldDetails(field, message) {
+  if (!field || !message) return null;
+  return {
+    fields: {
+      [field]: [message]
+    }
+  };
+}
+
+function getDatabaseErrorResponse(error) {
+  if (!error || !error.code) return null;
+
+  const fieldMeta = getDatabaseFieldMeta(error);
+  const isDataError = /^(22|23)/.test(String(error.code || ''));
+
+  if (fieldMeta && error.code === '23502') {
+    const message = `${fieldMeta.label} is required.`;
+    return json(400, { error: message, details: buildFieldDetails(fieldMeta.field, message) });
+  }
+
+  if (fieldMeta && error.code === '22001') {
+    const message = `${fieldMeta.label} is too long.`;
+    return json(400, { error: message, details: buildFieldDetails(fieldMeta.field, message) });
+  }
+
+  if (fieldMeta && error.code === '23514') {
+    const message = `${fieldMeta.label} has an invalid value.`;
+    return json(400, { error: message, details: buildFieldDetails(fieldMeta.field, message) });
+  }
+
+  if (fieldMeta && error.code === '22P02') {
+    const message = `${fieldMeta.label} has an invalid format.`;
+    return json(400, { error: message, details: buildFieldDetails(fieldMeta.field, message) });
+  }
+
+  return json(isDataError ? 400 : 500, {
+    error: getDatabaseErrorMessage(error) || error.message || 'Server error'
+  });
+}
+
 function toErrorResponse(error) {
   if (error && error.statusCode) {
     return json(error.statusCode, {
@@ -46,7 +114,13 @@ function toErrorResponse(error) {
     });
   }
 
-  const message = getDatabaseErrorMessage(error) || 'Server error';
+  const databaseResponse = getDatabaseErrorResponse(error);
+  if (databaseResponse) {
+    console.error(error);
+    return databaseResponse;
+  }
+
+  const message = error && error.message ? error.message : 'Server error';
   console.error(error);
   return json(500, { error: message });
 }

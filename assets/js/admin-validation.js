@@ -288,8 +288,8 @@
           }
         }),
         displayOrder: integerRules({
-          type: 'Display order must be a whole number.',
-          min: 'Display order must be at least 1.'
+          type: 'Sort order must be a whole number.',
+          min: 'Sort order must be at least 1.'
         }, { min: 1 }),
         promotionId: optionRules({
           type: 'Choose a valid offer.',
