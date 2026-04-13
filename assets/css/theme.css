@@ -231,6 +231,84 @@ body { padding-top: 0 !important; }
 .section-light > *:last-child { margin-bottom: 0; }
 .section-light, .section-light h1, .section-light h2, .section-light h3, .section-light h4, .section-light p, .section-light a { color: #2b1a1e !important; }
 
+.menu-spotlight-section {
+  position: relative;
+  padding-bottom: 108px;
+  overflow: visible;
+}
+.menu-spotlight-shell {
+  position: relative;
+  padding: 42px;
+  border-radius: 38px;
+  background:
+    radial-gradient(circle at top left, rgba(248,199,109,.22), rgba(248,199,109,0) 34%),
+    radial-gradient(circle at bottom right, rgba(232,111,146,.12), rgba(232,111,146,0) 36%),
+    linear-gradient(180deg, #fffdf8 0%, #fff8f0 52%, #ffffff 100%);
+  border: 1px solid rgba(218,159,91,.16);
+  box-shadow:
+    0 28px 54px rgba(43,26,30,.10),
+    inset 0 1px 0 rgba(255,255,255,.72);
+  overflow: hidden;
+}
+.menu-spotlight-shell::before,
+.menu-spotlight-shell::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.menu-spotlight-shell::before {
+  width: 180px;
+  height: 180px;
+  top: -76px;
+  right: -62px;
+  background: radial-gradient(circle, rgba(248,199,109,.30), rgba(248,199,109,0) 72%);
+}
+.menu-spotlight-shell::after {
+  width: 220px;
+  height: 220px;
+  left: -90px;
+  bottom: -126px;
+  background: radial-gradient(circle, rgba(232,111,146,.14), rgba(232,111,146,0) 74%);
+}
+.menu-spotlight-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  gap: 30px;
+  align-items: end;
+  margin-bottom: 28px;
+}
+.section-title--spotlight {
+  padding: 0 0 18px 0;
+  margin-bottom: 0;
+  text-align: left;
+  padding-left: 34px;
+}
+.section-title--spotlight::after {
+  top: 6px;
+  left: 0;
+  margin-left: 0;
+  height: 82px;
+}
+.section-title--spotlight h4 {
+  margin-bottom: 18px;
+  line-height: 1;
+}
+.section-title--spotlight .display-4 {
+  margin-bottom: 0;
+  max-width: 10ch;
+  line-height: 1.02;
+}
+.menu-spotlight-header__lede {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: rgba(43,26,30,.68) !important;
+}
+
 /* Ensure circular menu thumbnails are true circles (not ovals) */
 img.rounded-circle {
   display: block;
@@ -384,6 +462,11 @@ img.rounded-circle {
   gap: 18px;
   margin-bottom: 36px;
 }
+.promo-strip--spotlight {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 28px;
+}
 .promo-card {
   background: linear-gradient(135deg, rgba(43,26,30,.98), rgba(73,40,48,.94));
   border-radius: 22px;
@@ -425,6 +508,11 @@ img.rounded-circle {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 22px;
 }
+.featured-showcase-grid--spotlight {
+  position: relative;
+  z-index: 1;
+  align-items: stretch;
+}
 .featured-showcase-card {
   background: #fff;
   border: 1px solid rgba(43,26,30,.08);
@@ -433,6 +521,11 @@ img.rounded-circle {
   box-shadow: 0 16px 32px rgba(43,26,30,.08);
   display: flex;
   flex-direction: column;
+}
+.featured-showcase-grid--spotlight .featured-showcase-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,251,246,.94));
+  border-color: rgba(218,159,91,.15);
+  box-shadow: 0 20px 38px rgba(43,26,30,.10);
 }
 .featured-showcase-card__media {
   min-height: 220px;
@@ -466,6 +559,19 @@ img.rounded-circle {
   font-size: 3rem;
   font-family: 'Playfair Display', Georgia, serif;
   color: #7d4a2f;
+}
+.featured-showcase-card__fallback.menu-image-placeholder,
+.menu-card__fallback.menu-image-placeholder {
+  background: linear-gradient(135deg, rgba(248,199,109,.28), rgba(255,245,233,.96));
+  border: 1px solid rgba(218,159,91,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+.menu-image-placeholder i {
+  font-size: 3.2rem;
+  color: #8c5636;
+}
+.menu-image-placeholder--food i {
+  font-size: 2.8rem;
 }
 .featured-showcase-card__body {
   padding: 24px 24px 26px;
@@ -713,11 +819,36 @@ img.rounded-circle {
   color: rgba(43,26,30,.66) !important;
   text-align: center;
 }
+.empty-block--spotlight {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 32px;
+  border-radius: 30px;
+  border-style: solid;
+  border-color: rgba(218,159,91,.18);
+  background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,249,243,.92));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
 .empty-block.compact {
   padding: 16px 18px;
 }
 
 @media (max-width: 991.98px) {
+  .menu-spotlight-section {
+    padding-bottom: 84px;
+  }
+  .menu-spotlight-shell {
+    padding: 34px 28px;
+    border-radius: 30px;
+  }
+  .menu-spotlight-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
   .menu-catalog-section__header,
   .featured-showcase-card__footer,
   .menu-list-card {
@@ -727,8 +858,32 @@ img.rounded-circle {
   .menu-list-card__price {
     text-align: left;
   }
+  .empty-block--spotlight {
+    min-height: 160px;
+  }
 }
 @media (max-width: 767.98px) {
+  .menu-spotlight-section {
+    padding-bottom: 72px;
+  }
+  .menu-spotlight-shell {
+    padding: 28px 20px 30px;
+    border-radius: 24px;
+  }
+  .section-title--spotlight {
+    padding-bottom: 10px;
+    padding-left: 28px;
+  }
+  .section-title--spotlight::after {
+    left: 0;
+    top: 4px;
+    height: 60px;
+  }
+  .menu-spotlight-header__lede {
+    max-width: none;
+    font-size: .98rem;
+    line-height: 1.7;
+  }
   .promo-card,
   .featured-showcase-card__body,
   .menu-catalog-section,
@@ -742,6 +897,12 @@ img.rounded-circle {
   }
   .menu-catalog-table td {
     padding-right: 8px;
+  }
+  .empty-block--spotlight {
+    min-height: 132px;
+    padding: 22px 18px;
+    border-radius: 22px;
+    font-size: .98rem;
   }
 }
 

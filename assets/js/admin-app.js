@@ -95,6 +95,23 @@
     promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' }
   };
 
+  var IMAGE_PLACEHOLDERS = {
+    drink: {
+      key: 'drink',
+      token: 'placeholder:drink',
+      icon: 'fa-mug-hot',
+      label: 'Coffee cup',
+      hint: 'Use the drink placeholder.'
+    },
+    food: {
+      key: 'food',
+      token: 'placeholder:food',
+      icon: 'fa-bread-slice',
+      label: 'Food item',
+      hint: 'Use the food placeholder.'
+    }
+  };
+
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -109,6 +126,69 @@
     var number = Number(value);
     if (Number.isNaN(number)) return '—';
     return '$' + number.toFixed(2);
+  }
+
+  function getImagePlaceholderConfig(value) {
+    var normalized = String(value == null ? '' : value).trim().toLowerCase();
+
+    if (normalized === IMAGE_PLACEHOLDERS.drink.token || normalized === IMAGE_PLACEHOLDERS.drink.key) {
+      return IMAGE_PLACEHOLDERS.drink;
+    }
+    if (normalized === IMAGE_PLACEHOLDERS.food.token || normalized === IMAGE_PLACEHOLDERS.food.key) {
+      return IMAGE_PLACEHOLDERS.food;
+    }
+
+    return null;
+  }
+
+  function buildImagePlaceholderToken(value) {
+    var placeholder = getImagePlaceholderConfig(value);
+    return placeholder ? placeholder.token : '';
+  }
+
+  function suggestImagePlaceholderKey(category) {
+    var categoryText = [
+      category && category.name ? category.name : '',
+      category && category.description ? category.description : ''
+    ].join(' ').toLowerCase();
+
+    if (/(sandwich|panini|toast|bread|bite|pastr|croissant|bagel|dessert|snack|food|wrap|salad|cookie|muffin)/.test(categoryText)) {
+      return IMAGE_PLACEHOLDERS.food.key;
+    }
+
+    return IMAGE_PLACEHOLDERS.drink.key;
+  }
+
+  function buildPlaceholderChoiceMarkup(selectedKey) {
+    return Object.keys(IMAGE_PLACEHOLDERS).map(function(key) {
+      var placeholder = IMAGE_PLACEHOLDERS[key];
+      return [
+        '<label class="placeholder-choice">',
+          '<input type="radio" name="imagePlaceholder" value="', escapeHtml(placeholder.key), '"',
+            placeholder.key === selectedKey ? ' checked' : '',
+          '>',
+          '<span class="placeholder-choice__card">',
+            '<span class="placeholder-choice__icon item-img-placeholder item-img-placeholder--', escapeHtml(placeholder.key), '"><i class="fa ', escapeHtml(placeholder.icon), '"></i></span>',
+            '<span class="placeholder-choice__copy">',
+              '<strong>', escapeHtml(placeholder.label), '</strong>',
+              '<small>', escapeHtml(placeholder.hint), '</small>',
+            '</span>',
+          '</span>',
+        '</label>'
+      ].join('');
+    }).join('');
+  }
+
+  function buildAdminImageMarkup(imageUrl, altText, fallbackIcon) {
+    var placeholder = getImagePlaceholderConfig(imageUrl);
+
+    if (placeholder) {
+      return '<div class="item-img-placeholder item-img-placeholder--' + escapeHtml(placeholder.key) + '"><i class="fa ' + escapeHtml(placeholder.icon) + '"></i></div>';
+    }
+    if (imageUrl) {
+      return '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '">';
+    }
+    return '<div class="item-img-placeholder"><i class="fa ' + escapeHtml(fallbackIcon || 'fa-image') + '"></i></div>';
   }
 
   function delay(ms) {
@@ -686,9 +766,7 @@
             return [
               '<article class="item-card">',
                 '<div class="item-card-img">',
-                  item.imageUrl
-                    ? '<img src="' + escapeHtml(item.imageUrl) + '" alt="' + escapeHtml(item.name) + '">'
-                    : '<div class="item-img-placeholder"><i class="fa fa-mug-hot"></i></div>',
+                  buildAdminImageMarkup(item.imageUrl, item.name, 'fa-mug-hot'),
                   (item.isFeatured ? '<span class="featured-badge">Featured</span>' : ''),
                 '</div>',
                 '<div class="item-card-body">',
@@ -731,9 +809,7 @@
             return [
               '<article class="item-card">',
                 '<div class="item-card-img">',
-                  item.imageUrl
-                    ? '<img src="' + escapeHtml(item.imageUrl) + '" alt="' + escapeHtml(item.headline) + '">'
-                    : '<div class="item-img-placeholder"><i class="fa fa-star"></i></div>',
+                  buildAdminImageMarkup(item.imageUrl, item.headline, 'fa-star'),
                   (item.isActive ? '<span class="featured-badge">Live</span>' : ''),
                 '</div>',
                 '<div class="item-card-body">',
@@ -890,16 +966,20 @@
     ].join(' ');
   }
 
-  function buildItemImageModeOptions(category, hasImage, selectedMode) {
-    var mode = selectedMode || (hasImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove'));
+  function buildItemImageModeOptions(category, currentImageUrl, selectedMode) {
+    var currentPlaceholder = getImagePlaceholderConfig(currentImageUrl);
+    var hasImage = Boolean(currentImageUrl);
+    var hasCurrentPhoto = hasImage && !currentPlaceholder;
+    var mode = selectedMode || (currentPlaceholder ? 'placeholder' : hasCurrentPhoto ? 'keep' : (category && category.requireImage ? 'upload' : 'remove'));
     var options = [];
 
-    if (hasImage) {
+    if (hasCurrentPhoto) {
       options.push(option('keep', 'Keep current photo', mode === 'keep'));
     }
 
     options.push(option('upload', hasImage ? 'Replace with upload' : 'Upload photo', mode === 'upload'));
     options.push(option('url', hasImage ? 'Replace with image link' : 'Use image link', mode === 'url'));
+    options.push(option('placeholder', hasImage ? 'Use placeholder image' : 'Add placeholder image', mode === 'placeholder'));
 
     if (hasImage || !(category && category.requireImage)) {
       options.push(option('remove', hasImage ? 'Remove current photo' : 'No photo for now', mode === 'remove'));
@@ -936,8 +1016,14 @@
   function imageFieldMarkup(recordImageUrl, options) {
     var settings = options || {};
     var category = settings.category || null;
+    var currentPlaceholder = getImagePlaceholderConfig(recordImageUrl);
     var hasImage = Boolean(recordImageUrl);
-    var selectedMode = settings.mode || (hasImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove'));
+    var placeholderKey = settings.placeholderKey || (currentPlaceholder ? currentPlaceholder.key : suggestImagePlaceholderKey(category));
+    var previewPlaceholder = getImagePlaceholderConfig(placeholderKey) || IMAGE_PLACEHOLDERS.drink;
+    var selectedMode = settings.mode || (currentPlaceholder ? 'placeholder' : (hasImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove')));
+    var hasPreviewImage = hasImage && !currentPlaceholder;
+    var showPlaceholderPreview = Boolean(currentPlaceholder) || selectedMode === 'placeholder';
+    var imageUrlValue = currentPlaceholder ? '' : (recordImageUrl || '');
     return [
       '<section class="item-step item-step--media">',
         stepHeaderMarkup({
@@ -945,7 +1031,7 @@
           label: settings.label || 'Image',
           icon: settings.icon || 'fa-image',
           title: settings.title || 'Add a photo',
-          intro: settings.intro || 'Choose how to add the photo, then check the preview.'
+          intro: settings.intro || 'Choose a photo source, then check the preview.'
         }),
         '<div class="item-step__body">',
           '<div class="item-media">',
@@ -953,13 +1039,13 @@
               '<div class="form-group">',
                 '<label class="form-label" for="drawerImageMode">Photo source</label>',
                 '<select class="form-control" id="drawerImageMode" name="imageMode">',
-                  buildItemImageModeOptions(category, hasImage, selectedMode),
+                  buildItemImageModeOptions(category, recordImageUrl, selectedMode),
                 '</select>',
-                '<p class="form-hint">Upload a file or paste a direct image link.</p>',
+                '<p class="form-hint">Upload a file, paste a link, or use a built-in placeholder.</p>',
               '</div>',
               '<div class="form-group', selectedMode === 'url' ? '' : ' field-hidden', '" id="drawerImageUrlGroup">',
                 '<label class="form-label" for="drawerImageUrl">Image link <span>*</span></label>',
-                '<input class="form-control" id="drawerImageUrl" name="imageUrl" type="text" value="' + escapeHtml(recordImageUrl || '') + '" placeholder="https://... or /assets/images/...">',
+                '<input class="form-control" id="drawerImageUrl" name="imageUrl" type="text" value="' + escapeHtml(imageUrlValue) + '" placeholder="https://... or /assets/images/...">',
                 '<p class="form-hint">Use a direct image URL or a site asset path.</p>',
               '</div>',
               '<div class="form-group', selectedMode === 'upload' ? '' : ' field-hidden', '" id="drawerImageUploadGroup">',
@@ -972,17 +1058,28 @@
                 '</label>',
                 '<div class="image-upload-meta" id="drawerImageUploadMeta">No file selected yet.</div>',
               '</div>',
+              '<div class="form-group', selectedMode === 'placeholder' ? '' : ' field-hidden', '" id="drawerImagePlaceholderGroup">',
+                '<label class="form-label">Placeholder image <span>*</span></label>',
+                '<div class="placeholder-choice-list" id="drawerImagePlaceholderList">',
+                  buildPlaceholderChoiceMarkup(placeholderKey),
+                '</div>',
+                '<p class="form-hint">Use a simple icon when you do not have a photo yet.</p>',
+              '</div>',
             '</div>',
             '<div class="item-media__preview" id="drawerImagePreviewGroup">',
               '<div class="item-media__preview-label">Preview</div>',
               '<div class="image-preview-frame">',
-                '<div class="img-preview-wrap', hasImage ? '' : ' field-hidden', '" id="drawerImageAssetWrap">',
-                  '<img id="drawerImagePreview" src="' + escapeHtml(recordImageUrl || '') + '" alt="Preview">',
+                '<div class="img-preview-wrap', hasPreviewImage ? '' : ' field-hidden', '" id="drawerImageAssetWrap">',
+                  '<img id="drawerImagePreview" src="' + escapeHtml(hasPreviewImage ? recordImageUrl : '') + '" alt="Preview">',
                 '</div>',
-                '<div class="img-preview-empty', hasImage ? ' field-hidden' : '', '" id="drawerImageEmptyState">',
+                '<div class="img-preview-placeholder', showPlaceholderPreview ? '' : ' field-hidden', '" id="drawerImagePlaceholderWrap">',
+                  '<div class="item-img-placeholder item-img-placeholder--preview item-img-placeholder--', escapeHtml(previewPlaceholder.key), '" id="drawerImagePlaceholderIconWrap"><i class="fa ', escapeHtml(previewPlaceholder.icon), '" id="drawerImagePlaceholderIcon"></i></div>',
+                  '<strong id="drawerImagePlaceholderLabel">', escapeHtml(previewPlaceholder.label), ' placeholder</strong>',
+                '</div>',
+                '<div class="img-preview-empty', hasPreviewImage || showPlaceholderPreview ? ' field-hidden' : '', '" id="drawerImageEmptyState">',
                   '<i class="fa fa-image"></i>',
-                  '<strong>No photo selected</strong>',
-                  '<p>Add a photo to preview it here.</p>',
+                  '<strong>No image selected</strong>',
+                  '<p>Add a photo or choose a placeholder to preview it here.</p>',
                 '</div>',
               '</div>',
               '<p class="image-preview-caption">The preview updates automatically.</p>',
@@ -1323,10 +1420,10 @@
       }
       if (preview) {
         preview.addEventListener('error', function() {
-          setDrawerImagePreviewVisibility(false);
+          setDrawerImagePreviewVisibility('empty');
         });
         preview.addEventListener('load', function() {
-          setDrawerImagePreviewVisibility(true);
+          setDrawerImagePreviewVisibility('image');
         });
       }
       syncImageModeUI();
@@ -1373,7 +1470,8 @@
     var imageUrlField = document.getElementById('drawerImageUrl');
     var category = categoryField ? getCategoryById(categoryField.value) : null;
     var record = getDrawerRecord();
-    var hasCurrentImage = Boolean(record && record.imageUrl);
+    var currentImageUrl = record && record.imageUrl ? record.imageUrl : '';
+    var hasCurrentImage = Boolean(currentImageUrl);
     var optionKey;
     var selectedMode;
     var hasDraftImage;
@@ -1381,11 +1479,12 @@
     if (!modeField) return;
 
     optionKey = [hasCurrentImage ? '1' : '0', category && category.requireImage ? '1' : '0'].join(':');
-    selectedMode = modeField.value || (hasCurrentImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove'));
+    selectedMode = modeField.value || (getImagePlaceholderConfig(currentImageUrl) ? 'placeholder' : (hasCurrentImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove')));
     hasDraftImage = Boolean(
       state.drawerUploadData ||
       state.drawerUploadFile ||
-      (imageUrlField && imageUrlField.value.trim())
+      (imageUrlField && imageUrlField.value.trim()) ||
+      (selectedMode === 'placeholder' && getSelectedImagePlaceholderKey())
     );
 
     if (!hasCurrentImage && category && category.requireImage && selectedMode === 'remove' && !hasDraftImage) {
@@ -1393,7 +1492,7 @@
     }
 
     if (modeField.dataset.optionKey !== optionKey) {
-      modeField.innerHTML = buildItemImageModeOptions(category, hasCurrentImage, selectedMode);
+      modeField.innerHTML = buildItemImageModeOptions(category, currentImageUrl, selectedMode);
       modeField.dataset.optionKey = optionKey;
     }
 
@@ -1426,12 +1525,38 @@
     group.classList.toggle('field-hidden', discountType.value === 'text');
   }
 
-  function setDrawerImagePreviewVisibility(hasPreview) {
+  function getSelectedImagePlaceholderKey() {
+    var selected = refs.drawerForm
+      ? refs.drawerForm.querySelector('[name="imagePlaceholder"]:checked')
+      : null;
+    return selected ? selected.value : '';
+  }
+
+  function setDrawerPlaceholderPreview(placeholder) {
+    var placeholderWrap = document.getElementById('drawerImagePlaceholderWrap');
+    var placeholderIconWrap = document.getElementById('drawerImagePlaceholderIconWrap');
+    var placeholderIcon = document.getElementById('drawerImagePlaceholderIcon');
+    var placeholderLabel = document.getElementById('drawerImagePlaceholderLabel');
+
+    if (!placeholderWrap || !placeholderIconWrap || !placeholderIcon || !placeholderLabel) return;
+
+    placeholderIconWrap.className = 'item-img-placeholder item-img-placeholder--preview item-img-placeholder--' + placeholder.key;
+    placeholderIcon.className = 'fa ' + placeholder.icon;
+    placeholderLabel.textContent = placeholder.label + ' placeholder';
+  }
+
+  function setDrawerImagePreviewVisibility(stateName, placeholder) {
     var assetWrap = document.getElementById('drawerImageAssetWrap');
+    var placeholderWrap = document.getElementById('drawerImagePlaceholderWrap');
     var emptyState = document.getElementById('drawerImageEmptyState');
 
-    if (assetWrap) assetWrap.classList.toggle('field-hidden', !hasPreview);
-    if (emptyState) emptyState.classList.toggle('field-hidden', hasPreview);
+    if (placeholder) {
+      setDrawerPlaceholderPreview(placeholder);
+    }
+
+    if (assetWrap) assetWrap.classList.toggle('field-hidden', stateName !== 'image');
+    if (placeholderWrap) placeholderWrap.classList.toggle('field-hidden', stateName !== 'placeholder');
+    if (emptyState) emptyState.classList.toggle('field-hidden', stateName !== 'empty');
   }
 
   function syncImageUploadMeta() {
@@ -1453,16 +1578,22 @@
     var mode = document.getElementById('drawerImageMode');
     var urlGroup = document.getElementById('drawerImageUrlGroup');
     var uploadGroup = document.getElementById('drawerImageUploadGroup');
+    var placeholderGroup = document.getElementById('drawerImagePlaceholderGroup');
     var preview = document.getElementById('drawerImagePreview');
     var imageUrlInput = document.getElementById('drawerImageUrl');
+    var placeholderKey = getSelectedImagePlaceholderKey();
     var currentMode = mode ? mode.value : 'keep';
+    var placeholder = currentMode === 'placeholder' ? getImagePlaceholderConfig(placeholderKey) : null;
     var previewUrl = '';
 
     if (urlGroup) urlGroup.classList.toggle('field-hidden', currentMode !== 'url');
     if (uploadGroup) uploadGroup.classList.toggle('field-hidden', currentMode !== 'upload');
+    if (placeholderGroup) placeholderGroup.classList.toggle('field-hidden', currentMode !== 'placeholder');
 
     if (currentMode === 'url') {
       previewUrl = imageUrlInput ? imageUrlInput.value.trim() : '';
+    } else if (currentMode === 'placeholder') {
+      previewUrl = buildImagePlaceholderToken(placeholderKey);
     } else if (currentMode !== 'remove') {
       previewUrl = state.drawerPreviewUrl || '';
     }
@@ -1472,15 +1603,22 @@
       return;
     }
 
+    if (placeholder) {
+      preview.removeAttribute('src');
+      setDrawerImagePreviewVisibility('placeholder', placeholder);
+      syncImageUploadMeta();
+      return;
+    }
+
     if (!previewUrl) {
       preview.removeAttribute('src');
-      setDrawerImagePreviewVisibility(false);
+      setDrawerImagePreviewVisibility('empty');
       syncImageUploadMeta();
       return;
     }
 
     preview.src = previewUrl;
-    setDrawerImagePreviewVisibility(true);
+    setDrawerImagePreviewVisibility('image');
     syncImageUploadMeta();
   }
 
@@ -1520,6 +1658,12 @@
       if (!field.name) return;
       if (field.type === 'checkbox') {
         values[field.name] = field.checked;
+      } else if (field.type === 'radio') {
+        if (field.checked) {
+          values[field.name] = field.value;
+        } else if (!(field.name in values)) {
+          values[field.name] = '';
+        }
       } else {
         values[field.name] = field.value;
       }
@@ -1594,6 +1738,9 @@
     if (fieldName === 'imageUpload') {
       return document.getElementById('drawerImageUpload');
     }
+    if (fieldName === 'imagePlaceholder') {
+      return refs.drawerForm.querySelector('[name="imagePlaceholder"]:checked') || refs.drawerForm.querySelector('[name="imagePlaceholder"]');
+    }
     return refs.drawerForm.querySelector('[name="' + fieldName + '"]');
   }
 
@@ -1619,6 +1766,10 @@
       if (uploadInput) targets.push(uploadInput);
       return targets;
     }
+    if (fieldName === 'imagePlaceholder') {
+      var placeholderList = document.getElementById('drawerImagePlaceholderList');
+      return placeholderList ? [placeholderList] : [];
+    }
 
     var control = getDrawerFieldControl(fieldName);
     return control ? [control] : [];
@@ -1642,7 +1793,11 @@
     }
 
     control = getDrawerFieldControl(fieldName);
-    if (control) {
+    if (fieldName === 'imagePlaceholder' && refs.drawerForm) {
+      Array.prototype.forEach.call(refs.drawerForm.querySelectorAll('[name="imagePlaceholder"]'), function(input) {
+        input.setAttribute('aria-describedby', node.id);
+      });
+    } else if (control) {
       control.setAttribute('aria-describedby', node.id);
     }
 
@@ -1651,7 +1806,7 @@
 
   function clearDrawerValidationUI() {
     Array.prototype.forEach.call(
-      refs.drawerForm.querySelectorAll('.form-control.is-invalid, .img-upload-zone.is-invalid'),
+      refs.drawerForm.querySelectorAll('.form-control.is-invalid, .img-upload-zone.is-invalid, .placeholder-choice-list.is-invalid'),
       function(node) {
         node.classList.remove('is-invalid');
       }
@@ -1787,6 +1942,7 @@
       endDate: 'End date',
       headline: 'Headline',
       imageMode: 'Photo source',
+      imagePlaceholder: 'Placeholder image',
       imageUpload: 'Upload photo',
       imageUrl: 'Image link',
       menuItemId: 'Linked menu item',
@@ -1908,6 +2064,10 @@
       addFieldError(mapped, 'imageUpload', 'Please provide a valid image.');
     } else if (message === 'Uploaded image exceeds the 2MB limit.') {
       addFieldError(mapped, 'imageUpload', 'Image must be 2MB or smaller.');
+    } else if (message === 'Placeholder image is invalid.') {
+      addFieldError(mapped, 'imagePlaceholder', 'Choose a valid placeholder image.');
+    } else if (message === 'Image mode is invalid.') {
+      addFieldError(mapped, 'imageMode', 'Please provide a valid image.');
     } else if (message === 'Display order must be a whole number.' || message === 'Display order is out of range.') {
       addFieldError(mapped, 'displayOrder', message === 'Display order is out of range.' ? 'Display order must be at least 1.' : message);
     } else if (message === 'Featured headline is required.' || message === 'Featured headline is too long.') {
@@ -1980,6 +2140,7 @@
       payload.imageMode = values.imageMode;
       if (values.imageMode === 'url') payload.imageUrl = values.imageUrl;
       if (values.imageMode === 'upload') payload.imageUpload = state.drawerUploadData;
+      if (values.imageMode === 'placeholder') payload.imagePlaceholder = values.imagePlaceholder;
       return payload;
     }
 
@@ -1993,6 +2154,7 @@
       payload.imageMode = values.imageMode;
       if (values.imageMode === 'url') payload.imageUrl = values.imageUrl;
       if (values.imageMode === 'upload') payload.imageUpload = state.drawerUploadData;
+      if (values.imageMode === 'placeholder') payload.imagePlaceholder = values.imagePlaceholder;
       return payload;
     }
 

@@ -2,6 +2,17 @@
   'use strict';
 
   var API_ENDPOINT = '/api/content';
+  var LOCAL_FALLBACK_ENDPOINT = './assets/data/menu.json';
+  var IMAGE_PLACEHOLDERS = {
+    drink: {
+      token: 'placeholder:drink',
+      icon: 'fa-mug-hot'
+    },
+    food: {
+      token: 'placeholder:food',
+      icon: 'fa-bread-slice'
+    }
+  };
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -31,6 +42,97 @@
     if (!node) return;
     setVisibility(node, true);
     node.innerHTML = '<div class="' + (className || 'empty-block') + '">' + escapeHtml(message) + '</div>';
+  }
+
+  function getImagePlaceholderConfig(value) {
+    var normalized = String(value == null ? '' : value).trim().toLowerCase();
+
+    if (normalized === IMAGE_PLACEHOLDERS.drink.token) return IMAGE_PLACEHOLDERS.drink;
+    if (normalized === IMAGE_PLACEHOLDERS.food.token) return IMAGE_PLACEHOLDERS.food;
+    return null;
+  }
+
+  function buildMenuImageMarkup(imageUrl, altText, fallbackClass, fallbackText) {
+    var placeholder = getImagePlaceholderConfig(imageUrl);
+
+    if (placeholder) {
+      return [
+        '<div class="', fallbackClass, ' menu-image-placeholder menu-image-placeholder--',
+        escapeHtml(placeholder.token.split(':')[1]),
+        '"><i class="fa ', escapeHtml(placeholder.icon), '" aria-hidden="true"></i></div>'
+      ].join('');
+    }
+
+    if (imageUrl) {
+      return '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '" loading="lazy">';
+    }
+
+    return '<div class="' + fallbackClass + '"><span>' + escapeHtml(fallbackText) + '</span></div>';
+  }
+
+  function fetchJson(url) {
+    return fetch(url, { cache: 'no-cache' }).then(function(response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+    });
+  }
+
+  function buildLocalFallbackContent(payload) {
+    var rawItems = payload && Array.isArray(payload.items) ? payload.items : [];
+    var categories = [];
+    var categoryMap = {};
+    var featuredItems = [];
+
+    rawItems.forEach(function(rawItem, index) {
+      var categoryName = rawItem && rawItem.category ? String(rawItem.category).trim() : 'Menu Favorites';
+      var price = rawItem && rawItem.price != null ? Number(rawItem.price) : null;
+      var item = {
+        name: rawItem && rawItem.name ? String(rawItem.name).trim() : 'Featured Item',
+        description: rawItem && rawItem.description ? String(rawItem.description).trim() : '',
+        priceSingle: Number.isFinite(price) ? price : null,
+        effectivePriceSingle: Number.isFinite(price) ? price : null,
+        imageUrl: rawItem && rawItem.imageUrl ? String(rawItem.imageUrl).trim() : '',
+        isAvailable: true,
+        isFeatured: index < 3,
+        promotion: null
+      };
+
+      if (!categoryMap[categoryName]) {
+        categoryMap[categoryName] = {
+          name: categoryName,
+          description: '',
+          layout: 'card',
+          priceLabels: [],
+          allowMultiPrice: false,
+          items: []
+        };
+        categories.push(categoryMap[categoryName]);
+      }
+
+      categoryMap[categoryName].items.push(item);
+
+      if (featuredItems.length < 3) {
+        featuredItems.push({
+          headline: item.name,
+          subtext: item.description,
+          imageUrl: item.imageUrl,
+          promotion: null,
+          linkedItem: {
+            name: item.name,
+            description: item.description,
+            imageUrl: item.imageUrl,
+            isAvailable: true,
+            priceSummary: item.priceSingle != null ? formatMoney(item.priceSingle) : ''
+          }
+        });
+      }
+    });
+
+    return {
+      promotions: [],
+      featuredItems: featuredItems,
+      categories: categories
+    };
   }
 
   function getBadgeMarkup(item) {
@@ -120,7 +222,7 @@
     clear(container);
 
     if (!items || !items.length) {
-      setMessage(container, 'Seasonal favorites will be shared here soon.');
+      setMessage(container, 'Seasonal favorites will be shared here soon.', 'empty-block empty-block--spotlight');
       return;
     }
 
@@ -136,9 +238,12 @@
       return [
         '<article class="featured-showcase-card">',
           '<div class="featured-showcase-card__media">',
-            image
-              ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(item.headline || (linked && linked.name) || 'Featured item') + '" loading="lazy">'
-              : '<div class="featured-showcase-card__fallback"><span>' + escapeHtml((item.headline || 'M').charAt(0)) + '</span></div>',
+            buildMenuImageMarkup(
+              image,
+              item.headline || (linked && linked.name) || 'Featured item',
+              'featured-showcase-card__fallback',
+              (item.headline || 'M').charAt(0)
+            ),
           '</div>',
           '<div class="featured-showcase-card__body">',
             '<div class="featured-showcase-card__badges">',
@@ -173,9 +278,7 @@
             return [
               '<article class="menu-card">',
                 '<div class="menu-card__media">',
-                  item.imageUrl
-                    ? '<img src="' + escapeHtml(item.imageUrl) + '" alt="' + escapeHtml(item.name) + '" loading="lazy">'
-                    : '<div class="menu-card__fallback"><span>' + escapeHtml(item.name.charAt(0)) + '</span></div>',
+                  buildMenuImageMarkup(item.imageUrl, item.name, 'menu-card__fallback', item.name.charAt(0)),
                 '</div>',
                 '<div class="menu-card__body">',
                   '<div class="menu-card__badges">' + getBadgeMarkup(item) + '</div>',
@@ -300,7 +403,7 @@
       setVisibility(homePromotions, false);
     }
     if (homeFeatured) {
-      setMessage(homeFeatured, 'Loading today\'s favorites...');
+      setMessage(homeFeatured, 'Loading today\'s favorites...', 'empty-block empty-block--spotlight');
     }
     if (menuRoot) {
       setMessage(menuRoot, 'Loading the menu...');
@@ -319,7 +422,7 @@
       setVisibility(homePromotions, false);
     }
     if (homeFeatured) {
-      setMessage(homeFeatured, 'Fresh favorites will be shared here soon.');
+      setMessage(homeFeatured, 'Fresh favorites will be shared here soon.', 'empty-block empty-block--spotlight');
     }
     if (menuRoot) {
       setMessage(menuRoot, 'Our menu is taking a moment to load. Please check back shortly.');
@@ -329,17 +432,24 @@
   function bootstrap() {
     showLoadingStates();
 
-    fetch(API_ENDPOINT, { cache: 'no-cache' })
-      .then(function(response) {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        return response.json();
-      })
+    fetchJson(API_ENDPOINT)
       .then(function(data) {
         renderPromotions(document.getElementById('home-promotions'), data.promotions || []);
         renderFeatured(document.getElementById('homepage-featured-root'), data.featuredItems || []);
         renderMenuPage(document.getElementById('menu-content-root'), data.categories || []);
       })
-      .catch(showFetchError);
+      .catch(function(apiError) {
+        return fetchJson(LOCAL_FALLBACK_ENDPOINT)
+          .then(buildLocalFallbackContent)
+          .then(function(data) {
+            renderPromotions(document.getElementById('home-promotions'), data.promotions || []);
+            renderFeatured(document.getElementById('homepage-featured-root'), data.featuredItems || []);
+            renderMenuPage(document.getElementById('menu-content-root'), data.categories || []);
+          })
+          .catch(function(fallbackError) {
+            showFetchError(fallbackError || apiError);
+          });
+      });
   }
 
   document.addEventListener('DOMContentLoaded', bootstrap);

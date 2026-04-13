@@ -190,14 +190,19 @@
 
 
     <!-- Menu Start -->
-    <div class="container-fluid pt-5 section-light">
+    <div class="container-fluid pt-5 section-light menu-spotlight-section">
         <div class="container">
-            <div class="section-title">
-                <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu &amp; Pricing</h4>
-                <h1 class="display-4">What&rsquo;s Brewing Now</h1>
-            </div>
-            <div id="home-promotions" class="promo-strip"></div>
-            <div id="homepage-featured-root" class="featured-showcase-grid"></div>
+            <section class="menu-spotlight-shell" aria-labelledby="menu-spotlight-title">
+                <div class="menu-spotlight-header">
+                    <div class="section-title section-title--spotlight">
+                        <h4 class="text-primary text-uppercase" style="letter-spacing: 5px;">Menu Spotlight</h4>
+                        <h1 class="display-4" id="menu-spotlight-title">What&rsquo;s Brewing Now</h1>
+                    </div>
+                    <p class="menu-spotlight-header__lede">House signatures, seasonal pours, and the drinks guests are reaching for most right now.</p>
+                </div>
+                <div id="home-promotions" class="promo-strip promo-strip--spotlight"></div>
+                <div id="homepage-featured-root" class="featured-showcase-grid featured-showcase-grid--spotlight"></div>
+            </section>
         </div>
     </div>
     <!-- Menu End -->

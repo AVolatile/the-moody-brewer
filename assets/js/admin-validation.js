@@ -8,6 +8,7 @@
   var IMAGE_FILE_PATTERN = /\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
   var DATA_IMAGE_PATTERN = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
   var DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+  var IMAGE_PLACEHOLDER_PATTERN = /^placeholder:(drink|food)$/i;
 
   function isBlank(value) {
     return value == null || (typeof value === 'string' && value.trim() === '');
@@ -63,12 +64,29 @@
     if (!imageValue || /^javascript:/i.test(imageValue)) return false;
 
     return (
+      IMAGE_PLACEHOLDER_PATTERN.test(imageValue) ||
       DATA_IMAGE_PATTERN.test(imageValue) ||
       ABSOLUTE_URL_PATTERN.test(imageValue) ||
       ROOT_PATH_PATTERN.test(imageValue) ||
       RELATIVE_PATH_PATTERN.test(imageValue) ||
       IMAGE_FILE_PATTERN.test(imageValue)
     );
+  }
+
+  function normalizePlaceholderKey(value) {
+    var normalized = normalizeText(value).toLowerCase();
+
+    if (!normalized) return '';
+    if (normalized.indexOf('placeholder:') === 0) {
+      normalized = normalized.slice('placeholder:'.length);
+    }
+
+    return normalized;
+  }
+
+  function isValidPlaceholderKey(value) {
+    var placeholderKey = normalizePlaceholderKey(value);
+    return placeholderKey === 'drink' || placeholderKey === 'food';
   }
 
   function getUploadImageError(context) {
@@ -200,6 +218,52 @@
     return integerRules(messages, extend({ min: 1 }, options || {}));
   }
 
+  function validateImageField(values, context, api) {
+    var imageMode = normalizeText(values.imageMode || '').toLowerCase();
+    var hasCurrentImage = Boolean(context && context.currentImageUrl);
+
+    if (imageMode === 'keep') {
+      if (!hasCurrentImage) api.addError('imageMode', 'Image is required.');
+      return;
+    }
+    if (imageMode === 'remove') {
+      api.addError('imageMode', 'Image is required.');
+      return;
+    }
+    if (imageMode === 'upload') {
+      if (!context || (!context.uploadFile && !context.uploadData && !context.uploadPending)) {
+        api.addError('imageUpload', 'Image is required.');
+        return;
+      }
+
+      var uploadImageError = getUploadImageError(context);
+      if (uploadImageError) api.addError('imageUpload', uploadImageError);
+      return;
+    }
+    if (imageMode === 'url') {
+      if (isBlank(values.imageUrl)) {
+        api.addError('imageUrl', 'Image is required.');
+        return;
+      }
+      if (!isValidImageReference(values.imageUrl)) {
+        api.addError('imageUrl', 'Please provide a valid image.');
+      }
+      return;
+    }
+    if (imageMode === 'placeholder') {
+      if (isBlank(values.imagePlaceholder)) {
+        api.addError('imagePlaceholder', 'Choose a placeholder image.');
+        return;
+      }
+      if (!isValidPlaceholderKey(values.imagePlaceholder)) {
+        api.addError('imagePlaceholder', 'Choose a valid placeholder image.');
+      }
+      return;
+    }
+
+    api.addError('imageMode', 'Please provide a valid image.');
+  }
+
   var validators = {
     required: function(rule, value) {
       if (isBlank(value)) return rule.message;
@@ -313,40 +377,7 @@
           api.addError('priceMedium', 'Add at least one size price.');
           api.addError('priceLarge', 'Add at least one size price.');
         },
-        function(values, ctx, api) {
-          var imageMode = normalizeText(values.imageMode || '').toLowerCase();
-          var hasCurrentImage = Boolean(ctx && ctx.currentImageUrl);
-
-          if (imageMode === 'keep') {
-            if (!hasCurrentImage) api.addError('imageMode', 'Image is required.');
-            return;
-          }
-          if (imageMode === 'remove') {
-            api.addError('imageMode', 'Image is required.');
-            return;
-          }
-          if (imageMode === 'upload') {
-            if (!ctx || (!ctx.uploadFile && !ctx.uploadData && !ctx.uploadPending)) {
-              api.addError('imageUpload', 'Image is required.');
-              return;
-            }
-
-            var uploadImageError = getUploadImageError(ctx);
-            if (uploadImageError) api.addError('imageUpload', uploadImageError);
-            return;
-          }
-          if (imageMode === 'url') {
-            if (isBlank(values.imageUrl)) {
-              api.addError('imageUrl', 'Image is required.');
-              return;
-            }
-            if (!isValidImageReference(values.imageUrl)) {
-              api.addError('imageUrl', 'Please provide a valid image.');
-            }
-            return;
-          }
-          api.addError('imageMode', 'Please provide a valid image.');
-        }
+        validateImageField
       ]
     };
   }
@@ -405,42 +436,7 @@
           }
         })
       },
-      custom: [
-        function(values, ctx, api) {
-          var imageMode = normalizeText(values.imageMode || '').toLowerCase();
-          var hasCurrentImage = Boolean(ctx && ctx.currentImageUrl);
-
-          if (imageMode === 'keep') {
-            if (!hasCurrentImage) api.addError('imageMode', 'Image is required.');
-            return;
-          }
-          if (imageMode === 'remove') {
-            api.addError('imageMode', 'Image is required.');
-            return;
-          }
-          if (imageMode === 'upload') {
-            if (!ctx || (!ctx.uploadFile && !ctx.uploadData && !ctx.uploadPending)) {
-              api.addError('imageUpload', 'Image is required.');
-              return;
-            }
-
-            var uploadImageError = getUploadImageError(ctx);
-            if (uploadImageError) api.addError('imageUpload', uploadImageError);
-            return;
-          }
-          if (imageMode === 'url') {
-            if (isBlank(values.imageUrl)) {
-              api.addError('imageUrl', 'Image is required.');
-              return;
-            }
-            if (!isValidImageReference(values.imageUrl)) {
-              api.addError('imageUrl', 'Please provide a valid image.');
-            }
-            return;
-          }
-          api.addError('imageMode', 'Please provide a valid image.');
-        }
-      ]
+      custom: [validateImageField]
     };
   }
 

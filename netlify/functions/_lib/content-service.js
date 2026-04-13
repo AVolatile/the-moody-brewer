@@ -164,10 +164,26 @@ function parseUploadImage(value) {
   };
 }
 
+function normalizePlaceholderImage(value) {
+  const rawValue = String(value || '').trim().toLowerCase();
+  const placeholderKey = rawValue.startsWith('placeholder:')
+    ? rawValue.slice('placeholder:'.length)
+    : rawValue;
+
+  if (placeholderKey !== 'drink' && placeholderKey !== 'food') {
+    throw createHttpError(400, 'Placeholder image is invalid.');
+  }
+
+  return `placeholder:${placeholderKey}`;
+}
+
 function normalizeImageUrl(value) {
   if (value === undefined || value === null || value === '') return null;
   const imageUrl = String(value).trim();
   if (!imageUrl) return null;
+  if (/^placeholder:/i.test(imageUrl)) {
+    return normalizePlaceholderImage(imageUrl);
+  }
   if (/^javascript:/i.test(imageUrl)) {
     throw createHttpError(400, 'Image URL is invalid.');
   }
@@ -194,6 +210,13 @@ function resolveImageFields(payload, existingFields) {
   if (imageMode === 'url') {
     return {
       image_url: normalizeImageUrl(payload.imageUrl),
+      image_data: null,
+      image_mime: null
+    };
+  }
+  if (imageMode === 'placeholder') {
+    return {
+      image_url: normalizePlaceholderImage(payload.imagePlaceholder),
       image_data: null,
       image_mime: null
     };
