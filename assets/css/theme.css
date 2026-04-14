@@ -849,11 +849,14 @@ img.rounded-circle {
 
 /* Shared footer */
 .footer {
-  position: relative;
-  overflow: hidden;
-  background: #281E19;
-  color: #F7EFE8;
-  padding: 64px 0 34px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(rgba(51, 33, 29, .9), rgba(51, 33, 29, .9)), url(../img/bg.jpg);
+    background-position: top;
+    background-repeat: no-repeat;
+    background-size: cover;
+    color: #F7EFE8;
+    padding: 64px 0 34px;
 }
 .footer .container {
   position: relative;
