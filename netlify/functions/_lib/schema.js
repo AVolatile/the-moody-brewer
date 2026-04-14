@@ -78,6 +78,23 @@ async function ensureSchema(sql) {
     )
   `);
 
+  await sql(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id SERIAL PRIMARY KEY,
+      actor_username TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER,
+      entity_label TEXT,
+      action TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      changes JSONB NOT NULL DEFAULT '[]'::JSONB,
+      before_data JSONB,
+      after_data JSONB,
+      metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   await sql(`ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS name TEXT`);
   await sql(`ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS title TEXT`);
   await sql(`ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS description TEXT`);
@@ -161,6 +178,8 @@ async function ensureSchema(sql) {
   await sql(`CREATE INDEX IF NOT EXISTS idx_menu_items_display_order ON menu_items(category_id, display_order)`);
   await sql(`CREATE INDEX IF NOT EXISTS idx_featured_items_display_order ON featured_items(display_order)`);
   await sql(`CREATE INDEX IF NOT EXISTS idx_promotions_display_order ON promotions(display_order)`);
+  await sql(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`);
+  await sql(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_type_created_at ON audit_logs(entity_type, created_at DESC)`);
 
   for (const category of CATEGORY_SEED) {
     await sql(

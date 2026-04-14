@@ -6,6 +6,57 @@ const { ensureDatabase, getSql } = require('./db');
 const IMAGE_LIMIT_BASE64 = Math.floor(2.8 * 1024 * 1024);
 const CATEGORY_LAYOUTS = new Set(['card', 'table', 'list']);
 const DISCOUNT_TYPES = new Set(['text', 'percentage', 'fixed']);
+const AUDIT_FETCH_LIMIT = 120;
+const AUDIT_FIELD_LABELS = {
+  category: {
+    name: 'Section name',
+    slug: 'Slug',
+    description: 'Description',
+    layout: 'Layout',
+    pricing: 'Pricing style',
+    priceLabels: 'Price labels',
+    imageRequirement: 'Image requirement',
+    displayOrder: 'Sort order'
+  },
+  item: {
+    name: 'Item name',
+    category: 'Menu section',
+    description: 'Description',
+    price: 'Price',
+    mediumPrice: 'Medium price',
+    largePrice: 'Large price',
+    image: 'Image',
+    offer: 'Offer',
+    availability: 'Availability',
+    featured: 'Homepage feature',
+    displayOrder: 'Sort order'
+  },
+  featured: {
+    headline: 'Headline',
+    linkedItem: 'Linked menu item',
+    subtext: 'Subtext',
+    image: 'Image',
+    offer: 'Offer',
+    visibility: 'Visibility',
+    displayOrder: 'Sort order'
+  },
+  promotion: {
+    title: 'Offer title',
+    badge: 'Offer label',
+    description: 'Description',
+    discountType: 'Offer type',
+    discountValue: 'Amount off',
+    schedule: 'Schedule',
+    visibility: 'Visibility',
+    displayOrder: 'Sort order'
+  }
+};
+const AUDIT_FIELD_ORDER = {
+  category: ['name', 'slug', 'description', 'layout', 'pricing', 'priceLabels', 'imageRequirement', 'displayOrder'],
+  item: ['name', 'category', 'description', 'price', 'mediumPrice', 'largePrice', 'image', 'offer', 'availability', 'featured', 'displayOrder'],
+  featured: ['headline', 'linkedItem', 'subtext', 'image', 'offer', 'visibility', 'displayOrder'],
+  promotion: ['title', 'badge', 'description', 'discountType', 'discountValue', 'schedule', 'visibility', 'displayOrder']
+};
 
 function roundCurrency(value) {
   if (value == null) return null;
@@ -28,6 +79,20 @@ function parseJsonArray(value) {
     }
   }
   return [];
+}
+
+function parseJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+  return {};
 }
 
 function slugify(value) {
@@ -455,6 +520,222 @@ function mapFeaturedItemRow(row) {
   };
 }
 
+function formatCategoryLayoutLabel(layout) {
+  if (layout === 'table') return 'Compact list';
+  if (layout === 'list') return 'Simple list';
+  return 'Feature cards';
+}
+
+function formatPriceLabelsForAudit(value) {
+  const labels = parseJsonArray(value).filter(Boolean);
+  return labels.length ? labels.join(' / ') : 'Default labels';
+}
+
+function describeImageForAudit(imageUrl, imageData) {
+  if (imageData) return 'Uploaded image';
+  if (!imageUrl) return 'No image';
+  if (String(imageUrl).startsWith('placeholder:drink')) return 'Coffee cup placeholder';
+  if (String(imageUrl).startsWith('placeholder:food')) return 'Food item placeholder';
+  return 'Image link';
+}
+
+function describePromotionValueForAudit(promotion) {
+  return promotion && promotion.title ? promotion.title : 'No offer';
+}
+
+function describeScheduleForAudit(startDate, endDate) {
+  return [startDate || 'Now', endDate || 'Ongoing'].join(' → ');
+}
+
+function describeDiscountTypeForAudit(value) {
+  if (value === 'percentage') return 'Percentage';
+  if (value === 'fixed') return 'Fixed amount';
+  return 'Text only';
+}
+
+function describeDiscountValueForAudit(row) {
+  if (!row || row.discount_value == null) return '—';
+  if (row.discount_type === 'percentage') return `${Number(row.discount_value)}%`;
+  return formatMoney(row.discount_value);
+}
+
+function normalizeAuditActor(actor) {
+  if (!actor) return 'Unknown user';
+  if (typeof actor === 'string') return actor.trim() || 'Unknown user';
+  return String(actor.username || actor.sub || '').trim() || 'Unknown user';
+}
+
+function buildCategoryAuditState(row) {
+  const label = row.name || row.title || row.slug || 'Untitled section';
+  return {
+    label,
+    name: label,
+    slug: row.slug || '—',
+    description: row.description || '—',
+    layout: formatCategoryLayoutLabel(row.layout),
+    pricing: row.allow_multi_price ? 'Multiple sizes' : 'Single price',
+    priceLabels: formatPriceLabelsForAudit(row.price_labels),
+    imageRequirement: row.require_image ? 'Required' : 'Optional',
+    displayOrder: String(row.display_order || 0)
+  };
+}
+
+async function buildMenuItemAuditState(row) {
+  const promotion = row && row.promotion_id ? await getPromotionById(row.promotion_id) : null;
+  const label = row.name || 'Untitled item';
+  return {
+    label,
+    name: label,
+    category: row.category_name || row.category_slug || 'No section',
+    description: row.description || '—',
+    price: row.price_single != null ? formatMoney(row.price_single) : '—',
+    mediumPrice: row.price_medium != null ? formatMoney(row.price_medium) : '—',
+    largePrice: row.price_large != null ? formatMoney(row.price_large) : '—',
+    image: describeImageForAudit(row.image_url, row.image_data),
+    offer: describePromotionValueForAudit(promotion),
+    availability: row.is_available ? 'Available' : 'Hidden',
+    featured: row.is_featured ? 'Yes' : 'No',
+    displayOrder: String(row.display_order || 0)
+  };
+}
+
+async function buildFeaturedAuditState(row) {
+  const linkedItem = row && row.menu_item_id ? await getMenuItemById(row.menu_item_id) : null;
+  const promotion = row && row.promotion_id ? await getPromotionById(row.promotion_id) : null;
+  const label = row.headline || (linkedItem && linkedItem.name) || 'Homepage highlight';
+
+  return {
+    label,
+    headline: label,
+    linkedItem: linkedItem ? linkedItem.name : 'No linked menu item',
+    subtext: row.subtext || '—',
+    image: describeImageForAudit(row.image_url || (linkedItem && linkedItem.image_url), row.image_data || (linkedItem && linkedItem.image_data)),
+    offer: describePromotionValueForAudit(promotion),
+    visibility: row.is_active ? 'Visible' : 'Hidden',
+    displayOrder: String(row.display_order || 0)
+  };
+}
+
+function buildPromotionAuditState(row) {
+  const label = row.title || 'Untitled offer';
+  return {
+    label,
+    title: label,
+    badge: row.badge_text || '—',
+    description: row.description || '—',
+    discountType: describeDiscountTypeForAudit(row.discount_type),
+    discountValue: describeDiscountValueForAudit(row),
+    schedule: describeScheduleForAudit(row.start_date, row.end_date),
+    visibility: row.is_active ? 'Visible' : 'Hidden',
+    displayOrder: String(row.display_order || 0)
+  };
+}
+
+function buildAuditChanges(entityType, beforeState, afterState) {
+  const labels = AUDIT_FIELD_LABELS[entityType] || {};
+  const order = AUDIT_FIELD_ORDER[entityType] || Object.keys(labels);
+
+  return order.reduce((changes, field) => {
+    const beforeValue = beforeState && beforeState[field] != null ? String(beforeState[field]) : '';
+    const afterValue = afterState && afterState[field] != null ? String(afterState[field]) : '';
+
+    if (!beforeState && (!afterValue || afterValue === '—')) return changes;
+    if (!afterState && (!beforeValue || beforeValue === '—')) return changes;
+    if (beforeState && afterState && beforeValue === afterValue) return changes;
+
+    changes.push({
+      field,
+      label: labels[field] || field,
+      before: beforeValue || '—',
+      after: afterValue || '—'
+    });
+
+    return changes;
+  }, []);
+}
+
+async function logAuditEvent(entry) {
+  const sql = getSql();
+  const actorUsername = normalizeAuditActor(entry.actor);
+  const changes = Array.isArray(entry.changes) ? entry.changes : [];
+
+  await sql(
+    `
+      INSERT INTO audit_logs (
+        actor_username, entity_type, entity_id, entity_label, action, summary, changes, before_data, after_data, metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb)
+    `,
+    [
+      actorUsername,
+      entry.entityType,
+      entry.entityId || null,
+      entry.entityLabel || null,
+      entry.action,
+      entry.summary,
+      JSON.stringify(changes),
+      entry.beforeData ? JSON.stringify(entry.beforeData) : null,
+      entry.afterData ? JSON.stringify(entry.afterData) : null,
+      JSON.stringify(entry.metadata || {})
+    ]
+  );
+}
+
+function mapAuditLogRow(row) {
+  return {
+    id: row.id,
+    actorUsername: row.actor_username,
+    entityType: row.entity_type,
+    entityId: row.entity_id || null,
+    entityLabel: row.entity_label || '',
+    action: row.action,
+    summary: row.summary,
+    changes: parseJsonArray(row.changes),
+    beforeData: parseJsonObject(row.before_data),
+    afterData: parseJsonObject(row.after_data),
+    metadata: parseJsonObject(row.metadata),
+    createdAt: row.created_at
+  };
+}
+
+function sortAuditRecordsForOrder(records) {
+  return (Array.isArray(records) ? records : []).slice().sort((a, b) => {
+    const firstOrder = Number(a && (a.display_order != null ? a.display_order : a.displayOrder) || 0);
+    const secondOrder = Number(b && (b.display_order != null ? b.display_order : b.displayOrder) || 0);
+    const firstId = Number(a && a.id || 0);
+    const secondId = Number(b && b.id || 0);
+    return firstOrder - secondOrder || firstId - secondId;
+  });
+}
+
+async function fetchAuditLogs(limit) {
+  const sql = getSql();
+  const safeLimit = Math.max(1, Math.min(Number(limit) || AUDIT_FETCH_LIMIT, AUDIT_FETCH_LIMIT));
+  const rows = await sql(
+    `
+      SELECT
+        id,
+        actor_username,
+        entity_type,
+        entity_id,
+        entity_label,
+        action,
+        summary,
+        changes,
+        before_data,
+        after_data,
+        metadata,
+        created_at::text AS created_at
+      FROM audit_logs
+      ORDER BY created_at DESC, id DESC
+      LIMIT $1
+    `,
+    [safeLimit]
+  );
+
+  return rows.map(mapAuditLogRow);
+}
+
 async function queryOneOrNull(sql, query, params) {
   const rows = await sql(query, params || []);
   return rows[0] || null;
@@ -758,6 +1039,7 @@ async function getAdminSnapshot() {
   const menuItems = await fetchMenuItems(categories);
   const featuredItems = await fetchFeaturedItems();
   const promotions = await fetchPromotions();
+  const auditLogs = await fetchAuditLogs();
 
   return {
     dashboard: {
@@ -765,12 +1047,14 @@ async function getAdminSnapshot() {
       itemCount: menuItems.length,
       availableItemCount: menuItems.filter(item => item.isAvailable).length,
       featuredItemCount: featuredItems.length,
-      activePromotionCount: promotions.filter(promotion => promotion.isCurrent).length
+      activePromotionCount: promotions.filter(promotion => promotion.isCurrent).length,
+      auditLogCount: auditLogs.length
     },
     categories,
     menuItems,
     featuredItems,
-    promotions
+    promotions,
+    auditLogs
   };
 }
 
@@ -812,7 +1096,7 @@ function validateCategoryPrices(category, payload, existingItem) {
   };
 }
 
-async function createCategory(payload) {
+async function createCategory(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
 
@@ -824,12 +1108,13 @@ async function createCategory(payload) {
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('menu_categories');
 
-  await sql(
+  const rows = await sql(
     `
       INSERT INTO menu_categories (
         slug, name, title, description, layout, price_labels, require_image, allow_multi_price, display_order
       )
       VALUES ($1, $2, $2, $3, $4, $5::jsonb, $6, $7, $8)
+      RETURNING *
     `,
     [
       slug,
@@ -842,13 +1127,28 @@ async function createCategory(payload) {
       displayOrder
     ]
   );
+
+  const created = rows[0];
+  const afterState = buildCategoryAuditState(created);
+  await logAuditEvent({
+    actor,
+    entityType: 'category',
+    entityId: created.id,
+    entityLabel: afterState.label,
+    action: 'create',
+    summary: `Added menu section "${afterState.label}".`,
+    changes: buildAuditChanges('category', null, afterState),
+    beforeData: null,
+    afterData: afterState
+  });
 }
 
-async function updateCategory(payload) {
+async function updateCategory(payload, actor) {
   await ensureDatabase();
   const id = normalizeInteger(payload.id, 'Category id', { required: true, min: 1 });
   const current = await getCategoryById(id);
   if (!current) throw createHttpError(404, 'Category not found.');
+  const beforeState = buildCategoryAuditState(current);
 
   const nextName = payload.name !== undefined
     ? normalizeString(payload.name, 'Category name', { required: true, maxLength: 120 })
@@ -858,7 +1158,7 @@ async function updateCategory(payload) {
     : current.slug;
   if (!nextSlug) throw createHttpError(400, 'Category slug could not be created.');
 
-  await updateRecord('menu_categories', id, {
+  const updated = await updateRecord('menu_categories', id, {
     name: nextName,
     title: nextName,
     slug: nextSlug,
@@ -873,12 +1173,28 @@ async function updateCategory(payload) {
       ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
       : undefined
   });
+
+  const afterState = buildCategoryAuditState(updated);
+  await logAuditEvent({
+    actor,
+    entityType: 'category',
+    entityId: updated.id,
+    entityLabel: afterState.label,
+    action: 'update',
+    summary: `Updated menu section "${afterState.label}".`,
+    changes: buildAuditChanges('category', beforeState, afterState),
+    beforeData: beforeState,
+    afterData: afterState
+  });
 }
 
-async function deleteCategory(payload) {
+async function deleteCategory(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
   const id = normalizeInteger(payload.id, 'Category id', { required: true, min: 1 });
+  const current = await getCategoryById(id);
+  if (!current) throw createHttpError(404, 'Category not found.');
+  const beforeState = buildCategoryAuditState(current);
 
   const usage = await sql(`SELECT COUNT(*)::int AS count FROM menu_items WHERE category_id = $1`, [id]);
   if (usage[0] && usage[0].count > 0) {
@@ -887,14 +1203,49 @@ async function deleteCategory(payload) {
 
   const rows = await sql(`DELETE FROM menu_categories WHERE id = $1 RETURNING id`, [id]);
   if (!rows.length) throw createHttpError(404, 'Category not found.');
+
+  await logAuditEvent({
+    actor,
+    entityType: 'category',
+    entityId: id,
+    entityLabel: beforeState.label,
+    action: 'delete',
+    summary: `Deleted menu section "${beforeState.label}".`,
+    changes: buildAuditChanges('category', beforeState, null),
+    beforeData: beforeState,
+    afterData: null
+  });
 }
 
-async function reorderCategories(payload) {
+async function reorderCategories(payload, actor) {
   await ensureDatabase();
+  const categories = await fetchCategories();
+  const beforeOrder = sortAuditRecordsForOrder(categories).map(category => category.name);
   await updateDisplayOrderForIds('menu_categories', payload.orderedIds);
+  const reordered = await fetchCategories();
+  const afterOrder = sortAuditRecordsForOrder(reordered).map(category => category.name);
+
+  await logAuditEvent({
+    actor,
+    entityType: 'category',
+    entityId: null,
+    entityLabel: 'Menu sections',
+    action: 'reorder',
+    summary: 'Reordered menu sections.',
+    changes: [
+      {
+        field: 'displayOrder',
+        label: 'New order',
+        before: beforeOrder.join(' → ') || '—',
+        after: afterOrder.join(' → ') || '—'
+      }
+    ],
+    beforeData: { order: beforeOrder },
+    afterData: { order: afterOrder }
+  });
 }
 
-async function createMenuItem(payload) {
+async function createMenuItem(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
 
@@ -921,13 +1272,14 @@ async function createMenuItem(payload) {
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('menu_items', 'WHERE category_id = $1', [categoryId]);
 
-  await sql(
+  const rows = await sql(
     `
       INSERT INTO menu_items (
         category_id, name, description, price_single, price_medium, price_large,
         image_url, image_data, image_mime, is_featured, is_available, display_order, promotion_id
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
     `,
     [
       categoryId,
@@ -945,13 +1297,29 @@ async function createMenuItem(payload) {
       promotionId
     ]
   );
+
+  const inserted = rows[0];
+  const insertedWithContext = await getMenuItemById(inserted.id);
+  const afterState = await buildMenuItemAuditState(insertedWithContext);
+  await logAuditEvent({
+    actor,
+    entityType: 'item',
+    entityId: inserted.id,
+    entityLabel: afterState.label,
+    action: 'create',
+    summary: `Added menu item "${afterState.label}" to "${afterState.category}".`,
+    changes: buildAuditChanges('item', null, afterState),
+    beforeData: null,
+    afterData: afterState
+  });
 }
 
-async function updateMenuItem(payload) {
+async function updateMenuItem(payload, actor) {
   await ensureDatabase();
   const id = normalizeInteger(payload.id, 'Item id', { required: true, min: 1 });
   const current = await getMenuItemById(id);
   if (!current) throw createHttpError(404, 'Menu item not found.');
+  const beforeState = await buildMenuItemAuditState(current);
 
   const nextCategoryId = payload.categoryId !== undefined
     ? normalizeInteger(payload.categoryId, 'Category', { required: true, min: 1 })
@@ -1003,22 +1371,84 @@ async function updateMenuItem(payload) {
   });
 
   if (!updated) throw createHttpError(404, 'Menu item not found.');
+  const updatedWithContext = await getMenuItemById(id);
+  const afterState = await buildMenuItemAuditState(updatedWithContext);
+
+  await logAuditEvent({
+    actor,
+    entityType: 'item',
+    entityId: id,
+    entityLabel: afterState.label,
+    action: 'update',
+    summary: `Updated menu item "${afterState.label}".`,
+    changes: buildAuditChanges('item', beforeState, afterState),
+    beforeData: beforeState,
+    afterData: afterState
+  });
 }
 
-async function deleteMenuItem(payload) {
+async function deleteMenuItem(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
   const id = normalizeInteger(payload.id, 'Item id', { required: true, min: 1 });
+  const current = await getMenuItemById(id);
+  if (!current) throw createHttpError(404, 'Menu item not found.');
+  const beforeState = await buildMenuItemAuditState(current);
   const rows = await sql(`DELETE FROM menu_items WHERE id = $1 RETURNING id`, [id]);
   if (!rows.length) throw createHttpError(404, 'Menu item not found.');
+
+  await logAuditEvent({
+    actor,
+    entityType: 'item',
+    entityId: id,
+    entityLabel: beforeState.label,
+    action: 'delete',
+    summary: `Deleted menu item "${beforeState.label}".`,
+    changes: buildAuditChanges('item', beforeState, null),
+    beforeData: beforeState,
+    afterData: null
+  });
 }
 
-async function reorderMenuItems(payload) {
+async function reorderMenuItems(payload, actor) {
   await ensureDatabase();
+  const orderedIds = Array.isArray(payload.orderedIds) ? payload.orderedIds : [];
+  const currentRows = await Promise.all(
+    orderedIds.map(id => getMenuItemById(normalizeInteger(id, 'Display order item')))
+  );
+  const beforeOrder = currentRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  });
+  const categoryName = beforeOrder[0] ? beforeOrder[0].category_name : 'Menu';
   await updateDisplayOrderForIds('menu_items', payload.orderedIds);
+  const reorderedRows = await Promise.all(
+    orderedIds.map(id => getMenuItemById(normalizeInteger(id, 'Display order item')))
+  );
+  const afterOrder = reorderedRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  });
+
+  await logAuditEvent({
+    actor,
+    entityType: 'item',
+    entityId: null,
+    entityLabel: categoryName,
+    action: 'reorder',
+    summary: `Reordered menu items in "${categoryName}".`,
+    changes: [
+      {
+        field: 'displayOrder',
+        label: 'New order',
+        before: beforeOrder.map(item => item.name).join(' → ') || '—',
+        after: afterOrder.map(item => item.name).join(' → ') || '—'
+      }
+    ],
+    beforeData: { order: beforeOrder.map(item => item.name), category: categoryName },
+    afterData: { order: afterOrder.map(item => item.name), category: categoryName }
+  });
 }
 
-async function createFeaturedItem(payload) {
+async function createFeaturedItem(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
 
@@ -1036,12 +1466,13 @@ async function createFeaturedItem(payload) {
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('featured_items');
 
-  await sql(
+  const rows = await sql(
     `
       INSERT INTO featured_items (
         menu_item_id, headline, subtext, image_url, image_data, image_mime, promotion_id, display_order, is_active
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
     `,
     [
       linkedItem ? linkedItem.id : null,
@@ -1055,13 +1486,28 @@ async function createFeaturedItem(payload) {
       normalizeBoolean(payload.isActive, true)
     ]
   );
+
+  const created = rows[0];
+  const afterState = await buildFeaturedAuditState(created);
+  await logAuditEvent({
+    actor,
+    entityType: 'featured',
+    entityId: created.id,
+    entityLabel: afterState.label,
+    action: 'create',
+    summary: `Added homepage highlight "${afterState.label}".`,
+    changes: buildAuditChanges('featured', null, afterState),
+    beforeData: null,
+    afterData: afterState
+  });
 }
 
-async function updateFeaturedItem(payload) {
+async function updateFeaturedItem(payload, actor) {
   await ensureDatabase();
   const id = normalizeInteger(payload.id, 'Featured item id', { required: true, min: 1 });
   const current = await getFeaturedItemById(id);
   if (!current) throw createHttpError(404, 'Featured item not found.');
+  const beforeState = await buildFeaturedAuditState(current);
 
   const linkedItem = payload.menuItemId === ''
     ? null
@@ -1101,22 +1547,87 @@ async function updateFeaturedItem(payload) {
   });
 
   if (!updated) throw createHttpError(404, 'Featured item not found.');
+  const refreshed = await getFeaturedItemById(id);
+  const afterState = await buildFeaturedAuditState(refreshed);
+
+  await logAuditEvent({
+    actor,
+    entityType: 'featured',
+    entityId: id,
+    entityLabel: afterState.label,
+    action: 'update',
+    summary: `Updated homepage highlight "${afterState.label}".`,
+    changes: buildAuditChanges('featured', beforeState, afterState),
+    beforeData: beforeState,
+    afterData: afterState
+  });
 }
 
-async function deleteFeaturedItem(payload) {
+async function deleteFeaturedItem(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
   const id = normalizeInteger(payload.id, 'Featured item id', { required: true, min: 1 });
+  const current = await getFeaturedItemById(id);
+  if (!current) throw createHttpError(404, 'Featured item not found.');
+  const beforeState = await buildFeaturedAuditState(current);
   const rows = await sql(`DELETE FROM featured_items WHERE id = $1 RETURNING id`, [id]);
   if (!rows.length) throw createHttpError(404, 'Featured item not found.');
+
+  await logAuditEvent({
+    actor,
+    entityType: 'featured',
+    entityId: id,
+    entityLabel: beforeState.label,
+    action: 'delete',
+    summary: `Deleted homepage highlight "${beforeState.label}".`,
+    changes: buildAuditChanges('featured', beforeState, null),
+    beforeData: beforeState,
+    afterData: null
+  });
 }
 
-async function reorderFeaturedItems(payload) {
+async function reorderFeaturedItems(payload, actor) {
   await ensureDatabase();
+  const orderedIds = Array.isArray(payload.orderedIds) ? payload.orderedIds : [];
+  const beforeRows = await Promise.all(
+    orderedIds.map(id => getFeaturedItemById(normalizeInteger(id, 'Display order item')))
+  );
   await updateDisplayOrderForIds('featured_items', payload.orderedIds);
+  const afterRows = await Promise.all(
+    orderedIds.map(id => getFeaturedItemById(normalizeInteger(id, 'Display order item')))
+  );
+  const beforeOrder = beforeRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  }).map(function(item) {
+    return item.headline;
+  });
+  const afterOrder = afterRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  }).map(function(item) {
+    return item.headline;
+  });
+
+  await logAuditEvent({
+    actor,
+    entityType: 'featured',
+    entityId: null,
+    entityLabel: 'Homepage highlights',
+    action: 'reorder',
+    summary: 'Reordered homepage highlights.',
+    changes: [
+      {
+        field: 'displayOrder',
+        label: 'New order',
+        before: beforeOrder.join(' → ') || '—',
+        after: afterOrder.join(' → ') || '—'
+      }
+    ],
+    beforeData: { order: beforeOrder },
+    afterData: { order: afterOrder }
+  });
 }
 
-async function createPromotion(payload) {
+async function createPromotion(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
 
@@ -1136,12 +1647,13 @@ async function createPromotion(payload) {
     ? normalizeInteger(payload.displayOrder, 'Display order', { min: 1 })
     : await nextDisplayOrder('promotions');
 
-  await sql(
+  const rows = await sql(
     `
       INSERT INTO promotions (
         title, description, badge_text, discount_type, discount_value, start_date, end_date, is_active, display_order
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
     `,
     [
       normalizeString(payload.title, 'Promotion title', { required: true, maxLength: 160 }),
@@ -1155,13 +1667,28 @@ async function createPromotion(payload) {
       displayOrder
     ]
   );
+
+  const created = rows[0];
+  const afterState = buildPromotionAuditState(created);
+  await logAuditEvent({
+    actor,
+    entityType: 'promotion',
+    entityId: created.id,
+    entityLabel: afterState.label,
+    action: 'create',
+    summary: `Added special offer "${afterState.label}".`,
+    changes: buildAuditChanges('promotion', null, afterState),
+    beforeData: null,
+    afterData: afterState
+  });
 }
 
-async function updatePromotion(payload) {
+async function updatePromotion(payload, actor) {
   await ensureDatabase();
   const id = normalizeInteger(payload.id, 'Promotion id', { required: true, min: 1 });
   const current = await getPromotionById(id);
   if (!current) throw createHttpError(404, 'Promotion not found.');
+  const beforeState = buildPromotionAuditState(current);
 
   const discountType = payload.discountType !== undefined
     ? normalizeDiscountType(payload.discountType)
@@ -1206,19 +1733,83 @@ async function updatePromotion(payload) {
   });
 
   if (!updated) throw createHttpError(404, 'Promotion not found.');
+  const afterState = buildPromotionAuditState(updated);
+
+  await logAuditEvent({
+    actor,
+    entityType: 'promotion',
+    entityId: id,
+    entityLabel: afterState.label,
+    action: 'update',
+    summary: `Updated special offer "${afterState.label}".`,
+    changes: buildAuditChanges('promotion', beforeState, afterState),
+    beforeData: beforeState,
+    afterData: afterState
+  });
 }
 
-async function deletePromotion(payload) {
+async function deletePromotion(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
   const id = normalizeInteger(payload.id, 'Promotion id', { required: true, min: 1 });
+  const current = await getPromotionById(id);
+  if (!current) throw createHttpError(404, 'Promotion not found.');
+  const beforeState = buildPromotionAuditState(current);
   const rows = await sql(`DELETE FROM promotions WHERE id = $1 RETURNING id`, [id]);
   if (!rows.length) throw createHttpError(404, 'Promotion not found.');
+
+  await logAuditEvent({
+    actor,
+    entityType: 'promotion',
+    entityId: id,
+    entityLabel: beforeState.label,
+    action: 'delete',
+    summary: `Deleted special offer "${beforeState.label}".`,
+    changes: buildAuditChanges('promotion', beforeState, null),
+    beforeData: beforeState,
+    afterData: null
+  });
 }
 
-async function reorderPromotions(payload) {
+async function reorderPromotions(payload, actor) {
   await ensureDatabase();
+  const orderedIds = Array.isArray(payload.orderedIds) ? payload.orderedIds : [];
+  const beforeRows = await Promise.all(
+    orderedIds.map(id => getPromotionById(normalizeInteger(id, 'Display order item')))
+  );
   await updateDisplayOrderForIds('promotions', payload.orderedIds);
+  const afterRows = await Promise.all(
+    orderedIds.map(id => getPromotionById(normalizeInteger(id, 'Display order item')))
+  );
+  const beforeOrder = beforeRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  }).map(function(item) {
+    return item.title;
+  });
+  const afterOrder = afterRows.filter(Boolean).sort(function(a, b) {
+    return (a.display_order || 0) - (b.display_order || 0) || (a.id || 0) - (b.id || 0);
+  }).map(function(item) {
+    return item.title;
+  });
+
+  await logAuditEvent({
+    actor,
+    entityType: 'promotion',
+    entityId: null,
+    entityLabel: 'Special offers',
+    action: 'reorder',
+    summary: 'Reordered special offers.',
+    changes: [
+      {
+        field: 'displayOrder',
+        label: 'New order',
+        before: beforeOrder.join(' → ') || '—',
+        after: afterOrder.join(' → ') || '—'
+      }
+    ],
+    beforeData: { order: beforeOrder },
+    afterData: { order: afterOrder }
+  });
 }
 
 module.exports = {

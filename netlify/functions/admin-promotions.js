@@ -14,7 +14,9 @@ exports.handler = async function handler(event) {
     return { statusCode: 204, body: '' };
   }
 
-  if (!getSessionUser(event)) {
+  const sessionUser = getSessionUser(event);
+
+  if (!sessionUser) {
     return json(401, { error: 'Unauthorized.' });
   }
 
@@ -22,19 +24,19 @@ exports.handler = async function handler(event) {
     const body = parseBody(event);
 
     if (event.httpMethod === 'POST') {
-      await createPromotion(body);
+      await createPromotion(body, sessionUser);
       return json(201, { ok: true });
     }
     if (event.httpMethod === 'PUT') {
-      await updatePromotion(body);
+      await updatePromotion(body, sessionUser);
       return json(200, { ok: true });
     }
     if (event.httpMethod === 'DELETE') {
-      await deletePromotion(body);
+      await deletePromotion(body, sessionUser);
       return json(200, { ok: true });
     }
     if (event.httpMethod === 'PATCH') {
-      await reorderPromotions(body);
+      await reorderPromotions(body, sessionUser);
       return json(200, { ok: true });
     }
 

@@ -18,16 +18,21 @@
         itemCount: 0,
         availableItemCount: 0,
         featuredItemCount: 0,
-        activePromotionCount: 0
+        activePromotionCount: 0,
+        auditLogCount: 0
       },
       categories: [],
       menuItems: [],
       featuredItems: [],
-      promotions: []
+      promotions: [],
+      auditLogs: []
     },
     view: 'overview',
     itemSearch: '',
     itemCategoryFilter: 'all',
+    auditSearch: '',
+    auditEntityFilter: 'all',
+    auditActionFilter: 'all',
     drawer: null,
     drawerUploadData: null,
     drawerUploadFile: null,
@@ -82,7 +87,8 @@
     navCategoryCount: document.getElementById('navCategoryCount'),
     navItemCount: document.getElementById('navItemCount'),
     navFeaturedCount: document.getElementById('navFeaturedCount'),
-    navPromotionCount: document.getElementById('navPromotionCount')
+    navPromotionCount: document.getElementById('navPromotionCount'),
+    navAuditCount: document.getElementById('navAuditCount')
   };
 
   refs.loadingSteps = document.querySelectorAll('[data-loading-step]');
@@ -92,7 +98,8 @@
     categories: { title: 'Menu Sections', createLabel: 'Add Section', createEntity: 'category' },
     items: { title: 'Menu Items', createLabel: 'Add Menu Item', createEntity: 'item' },
     featured: { title: 'Homepage Highlights', createLabel: 'Add Highlight', createEntity: 'featured' },
-    promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' }
+    promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' },
+    audit: { title: 'Audit Log', createLabel: '', createEntity: '', canCreate: false }
   };
 
   var IMAGE_PLACEHOLDERS = {
@@ -538,6 +545,222 @@
     return item.priceSingle != null ? formatMoney(item.priceSingle) : '—';
   }
 
+  function auditEntityTitle(entityType) {
+    return {
+      category: 'Menu Section',
+      item: 'Menu Item',
+      featured: 'Homepage Highlight',
+      promotion: 'Special Offer'
+    }[entityType] || 'Website Change';
+  }
+
+  function auditActionTitle(action) {
+    return {
+      create: 'Created',
+      update: 'Updated',
+      delete: 'Deleted',
+      reorder: 'Reordered'
+    }[action] || 'Changed';
+  }
+
+  function auditActionIcon(action) {
+    return {
+      create: 'fa-plus',
+      update: 'fa-pen',
+      delete: 'fa-trash',
+      reorder: 'fa-sort'
+    }[action] || 'fa-history';
+  }
+
+  function auditActionTone(action) {
+    return {
+      create: 'success',
+      update: 'info',
+      delete: 'danger',
+      reorder: 'warm'
+    }[action] || 'muted';
+  }
+
+  function formatAuditTimestamp(value) {
+    if (!value) return 'Unknown time';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date);
+  }
+
+  function formatAuditDayLabel(value) {
+    if (!value) return 'Recent activity';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Recent activity';
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
+  }
+
+  function filteredAuditLogs() {
+    var query = state.auditSearch.trim().toLowerCase();
+
+    return (state.snapshot.auditLogs || []).filter(function(entry) {
+      var matchesEntity = state.auditEntityFilter === 'all' || entry.entityType === state.auditEntityFilter;
+      var matchesAction = state.auditActionFilter === 'all' || entry.action === state.auditActionFilter;
+      var haystack = [
+        entry.summary,
+        entry.entityLabel,
+        entry.actorUsername,
+        auditEntityTitle(entry.entityType),
+        auditActionTitle(entry.action),
+        (entry.changes || []).map(function(change) {
+          return [change.label, change.before, change.after].join(' ');
+        }).join(' ')
+      ].join(' ').toLowerCase();
+
+      return matchesEntity && matchesAction && (!query || haystack.indexOf(query) !== -1);
+    });
+  }
+
+  function groupAuditLogsByDay(entries) {
+    return (entries || []).reduce(function(groups, entry) {
+      var key = entry.createdAt ? String(entry.createdAt).slice(0, 10) : 'recent';
+      var currentGroup = groups.length && groups[groups.length - 1].key === key
+        ? groups[groups.length - 1]
+        : null;
+
+      if (!currentGroup) {
+        currentGroup = {
+          key: key,
+          label: formatAuditDayLabel(entry.createdAt),
+          entries: []
+        };
+        groups.push(currentGroup);
+      }
+
+      currentGroup.entries.push(entry);
+      return groups;
+    }, []);
+  }
+
+  function renderAuditSummaryCards(entries) {
+    var logs = entries || [];
+    var menuItemChanges = logs.filter(function(entry) {
+      return entry.entityType === 'item';
+    }).length;
+    var deletionCount = logs.filter(function(entry) {
+      return entry.action === 'delete';
+    }).length;
+    var reorderCount = logs.filter(function(entry) {
+      return entry.action === 'reorder';
+    }).length;
+
+    return [
+      '<div class="audit-summary-grid">',
+        statCard('fa-history', 'brown', 'Recent Entries', logs.length),
+        statCard('fa-coffee', 'blue', 'Menu Item Changes', menuItemChanges),
+        statCard('fa-trash', 'purple', 'Deletes Logged', deletionCount),
+        statCard('fa-sort', 'green', 'Reorders Logged', reorderCount),
+      '</div>'
+    ].join('');
+  }
+
+  function renderAuditEntry(entry) {
+    var changes = (entry.changes || []).slice(0, 8);
+    var extraCount = Math.max(0, (entry.changes || []).length - changes.length);
+
+    return [
+      '<article class="audit-entry">',
+        '<div class="audit-entry__icon ', auditActionTone(entry.action), '"><i class="fa ', auditActionIcon(entry.action), '"></i></div>',
+        '<div class="audit-entry__body">',
+          '<div class="audit-entry__header">',
+            '<div>',
+              '<div class="entity-eyebrow">', escapeHtml(auditEntityTitle(entry.entityType)), ' · ', escapeHtml(auditActionTitle(entry.action)), '</div>',
+              '<h4>', escapeHtml(entry.entityLabel || auditEntityTitle(entry.entityType)), '</h4>',
+            '</div>',
+            '<div class="audit-entry__meta">',
+              '<span class="meta-pill">', escapeHtml(entry.actorUsername || 'Unknown user'), '</span>',
+              '<span class="meta-pill muted">', escapeHtml(formatAuditTimestamp(entry.createdAt)), '</span>',
+            '</div>',
+          '</div>',
+          '<p class="audit-entry__summary">', escapeHtml(entry.summary || 'A website change was recorded.'), '</p>',
+          (changes.length
+            ? [
+                '<div class="audit-change-list">',
+                  changes.map(function(change) {
+                    return [
+                      '<div class="audit-change">',
+                        '<strong>', escapeHtml(change.label || change.field || 'Change'), '</strong>',
+                        '<div class="audit-change__values">',
+                          '<span>', escapeHtml(change.before || '—'), '</span>',
+                          '<i class="fa fa-arrow-right" aria-hidden="true"></i>',
+                          '<span>', escapeHtml(change.after || '—'), '</span>',
+                        '</div>',
+                      '</div>'
+                    ].join('');
+                  }).join(''),
+                  (extraCount ? '<p class="audit-entry__more">+' + escapeHtml(String(extraCount)) + ' more changes captured in this entry.</p>' : ''),
+                '</div>'
+              ].join('')
+            : '<p class="audit-entry__empty">This entry was recorded without field-level differences.</p>'),
+        '</div>',
+      '</article>'
+    ].join('');
+  }
+
+  function renderAuditView() {
+    var logs = filteredAuditLogs();
+    var groups = groupAuditLogsByDay(logs);
+
+    return [
+      '<section class="section-card">',
+        '<div class="section-card-header">',
+          '<h3>Audit Log</h3>',
+          '<span class="meta-pill warm">', escapeHtml(String(logs.length)), ' recent entries</span>',
+        '</div>',
+        '<div class="toolbar audit-toolbar">',
+          '<div class="search-wrap">',
+            '<i class="fa fa-search"></i>',
+            '<input id="auditSearchInput" type="search" placeholder="Search by item, summary, or admin user" value="', escapeHtml(state.auditSearch), '">',
+          '</div>',
+          '<select class="toolbar-select" id="auditEntityFilter" aria-label="Filter audit log by entity">',
+            '<option value="all"', state.auditEntityFilter === 'all' ? ' selected' : '', '>All areas</option>',
+            '<option value="item"', state.auditEntityFilter === 'item' ? ' selected' : '', '>Menu items</option>',
+            '<option value="category"', state.auditEntityFilter === 'category' ? ' selected' : '', '>Menu sections</option>',
+            '<option value="featured"', state.auditEntityFilter === 'featured' ? ' selected' : '', '>Homepage highlights</option>',
+            '<option value="promotion"', state.auditEntityFilter === 'promotion' ? ' selected' : '', '>Special offers</option>',
+          '</select>',
+          '<select class="toolbar-select" id="auditActionFilter" aria-label="Filter audit log by action">',
+            '<option value="all"', state.auditActionFilter === 'all' ? ' selected' : '', '>All actions</option>',
+            '<option value="create"', state.auditActionFilter === 'create' ? ' selected' : '', '>Created</option>',
+            '<option value="update"', state.auditActionFilter === 'update' ? ' selected' : '', '>Updated</option>',
+            '<option value="delete"', state.auditActionFilter === 'delete' ? ' selected' : '', '>Deleted</option>',
+            '<option value="reorder"', state.auditActionFilter === 'reorder' ? ' selected' : '', '>Reordered</option>',
+          '</select>',
+        '</div>',
+        '<div class="content-pad audit-content">',
+          renderAuditSummaryCards(logs),
+          (groups.length
+            ? '<div class="audit-timeline">' + groups.map(function(group) {
+                return [
+                  '<section class="audit-group">',
+                    '<div class="audit-group__label">', escapeHtml(group.label), '</div>',
+                    '<div class="audit-group__entries">',
+                      group.entries.map(renderAuditEntry).join(''),
+                    '</div>',
+                  '</section>'
+                ].join('');
+              }).join('') + '</div>'
+            : '<div class="empty-state compact"><i class="fa fa-history"></i><h4>No audit entries match this view</h4><p>Changes to menu items, sections, highlights, and offers will appear here for troubleshooting.</p></div>'),
+        '</div>',
+      '</section>'
+    ].join('');
+  }
+
   function currentMeta() {
     return viewMeta[state.view] || viewMeta.overview;
   }
@@ -545,8 +768,10 @@
   function syncTopbar() {
     var meta = currentMeta();
     refs.viewTitle.innerHTML = meta.title;
-    refs.createBtnLabel.textContent = meta.createLabel;
-    refs.createBtn.dataset.entity = meta.createEntity;
+    refs.createBtn.hidden = meta.canCreate === false;
+    refs.createBtn.disabled = meta.canCreate === false;
+    refs.createBtnLabel.textContent = meta.createLabel || '';
+    refs.createBtn.dataset.entity = meta.createEntity || '';
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-view]'), function(link) {
       link.classList.toggle('active', link.getAttribute('data-view') === state.view);
@@ -578,7 +803,8 @@
       statCard('fa-layer-group', 'brown', 'Menu Sections', dashboard.categoryCount),
       statCard('fa-coffee', 'blue', 'Menu Items', dashboard.itemCount),
       statCard('fa-check-circle', 'green', 'Available Today', dashboard.availableItemCount),
-      statCard('fa-tags', 'purple', 'Current Offers', dashboard.activePromotionCount)
+      statCard('fa-tags', 'purple', 'Current Offers', dashboard.activePromotionCount),
+      statCard('fa-history', 'brown', 'Recent Changes', dashboard.auditLogCount || (state.snapshot.auditLogs || []).length)
     ].join('');
   }
 
@@ -886,6 +1112,7 @@
     else if (state.view === 'items') html = renderItemsView();
     else if (state.view === 'featured') html = renderFeaturedView();
     else if (state.view === 'promotions') html = renderPromotionsView();
+    else if (state.view === 'audit') html = renderAuditView();
     else html = renderOverviewView();
 
     refs.viewContainer.innerHTML = html;
@@ -894,9 +1121,34 @@
 
   function attachViewHandlers() {
     var itemSearchInput = document.getElementById('itemSearchInput');
+    var auditSearchInput = document.getElementById('auditSearchInput');
+    var auditEntityFilter = document.getElementById('auditEntityFilter');
+    var auditActionFilter = document.getElementById('auditActionFilter');
+
     if (itemSearchInput) {
       itemSearchInput.addEventListener('input', function() {
         state.itemSearch = this.value;
+        renderCurrentView();
+      });
+    }
+
+    if (auditSearchInput) {
+      auditSearchInput.addEventListener('input', function() {
+        state.auditSearch = this.value;
+        renderCurrentView();
+      });
+    }
+
+    if (auditEntityFilter) {
+      auditEntityFilter.addEventListener('change', function() {
+        state.auditEntityFilter = this.value;
+        renderCurrentView();
+      });
+    }
+
+    if (auditActionFilter) {
+      auditActionFilter.addEventListener('change', function() {
+        state.auditActionFilter = this.value;
         renderCurrentView();
       });
     }
@@ -941,6 +1193,7 @@
     refs.navItemCount.textContent = state.snapshot.menuItems.length;
     refs.navFeaturedCount.textContent = state.snapshot.featuredItems.length;
     refs.navPromotionCount.textContent = state.snapshot.promotions.length;
+    refs.navAuditCount.textContent = (state.snapshot.auditLogs || []).length;
   }
 
   function setSidebarOpen(isOpen) {
