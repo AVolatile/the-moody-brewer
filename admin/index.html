@@ -17,75 +17,144 @@
   </head>
   <body>
     <div id="loginScreen">
-      <div class="login-card">
-        <img class="login-logo" src="/assets/images/mb_logo.png" alt="Moody Brewer" />
-        <h2>Client Admin</h2>
-        <p id="loginMessage">Sign in to update the menu, homepage highlights, and special offers.</p>
-        <form id="loginForm" novalidate>
-          <div class="login-diagnostics" id="loginDiagnostics" hidden></div>
-          <div class="login-input-wrap">
-            <i class="fa fa-user"></i>
-            <input
-              id="loginUsername"
-              name="username"
-              type="text"
-              autocomplete="username"
-              autocapitalize="off"
-              spellcheck="false"
-              placeholder="Username"
-              aria-describedby="loginUsernameError"
-              required
-            />
+      <div class="login-shell">
+        <section class="login-hero" aria-label="Admin workspace overview">
+          <div class="login-hero__brand">
+            <img class="login-logo" src="/assets/images/mb_logo.png" alt="Moody Brewer" />
+            <div>
+              <p class="login-hero__brand-kicker">Moody Brewer</p>
+              <strong class="login-hero__brand-title">Website Manager</strong>
+            </div>
           </div>
-          <div class="login-field-error" id="loginUsernameError" aria-live="polite"></div>
-          <div class="login-input-wrap">
-            <i class="fa fa-lock"></i>
-            <input
-              id="loginPassword"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="Password"
-              aria-describedby="loginPasswordError"
-              required
-            />
+          <p class="login-hero__eyebrow">Admin Workspace</p>
+          <h1>Manage the website from one polished, secure control center.</h1>
+          <p class="login-hero__lede">
+            Update menu items, homepage highlights, and seasonal offers with the same workspace your team can rely on every day.
+          </p>
+          <div class="login-hero__grid">
+            <article class="login-hero__feature">
+              <span class="login-hero__feature-icon"><i class="fa fa-coffee" aria-hidden="true"></i></span>
+              <div>
+                <strong>Menu publishing</strong>
+                <p>Keep item details, pricing, and photos accurate.</p>
+              </div>
+            </article>
+            <article class="login-hero__feature">
+              <span class="login-hero__feature-icon"><i class="fa fa-star" aria-hidden="true"></i></span>
+              <div>
+                <strong>Homepage highlights</strong>
+                <p>Control what guests see first across the site.</p>
+              </div>
+            </article>
+            <article class="login-hero__feature">
+              <span class="login-hero__feature-icon"><i class="fa fa-shield-alt" aria-hidden="true"></i></span>
+              <div>
+                <strong>Secure access</strong>
+                <p>Sign in to a focused admin space built for live updates.</p>
+              </div>
+            </article>
           </div>
-          <div class="login-field-error" id="loginPasswordError" aria-live="polite"></div>
-          <button class="btn-login" id="loginSubmitBtn" type="submit">Sign In</button>
-          <div class="login-error" id="loginError" role="alert"></div>
-        </form>
+        </section>
+
+        <section class="login-card" aria-label="Admin sign in">
+          <div class="login-card__header">
+            <p class="login-card__eyebrow">Secure Access</p>
+            <h2>Sign in to continue</h2>
+            <p class="login-card__intro" id="loginMessage">Sign in to update the menu, homepage highlights, and special offers.</p>
+          </div>
+
+          <form id="loginForm" novalidate>
+            <div class="login-diagnostics" id="loginDiagnostics" hidden></div>
+
+            <div class="login-field">
+              <label class="login-field__label" for="loginUsername">Username</label>
+              <div class="login-input-wrap">
+                <i class="fa fa-user" aria-hidden="true"></i>
+                <input
+                  id="loginUsername"
+                  name="username"
+                  type="text"
+                  autocomplete="username"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="Enter your username"
+                  aria-describedby="loginUsernameError"
+                  required
+                />
+              </div>
+              <div class="login-field-error" id="loginUsernameError" aria-live="polite"></div>
+            </div>
+
+            <div class="login-field">
+              <label class="login-field__label" for="loginPassword">Password</label>
+              <div class="login-input-wrap">
+                <i class="fa fa-lock" aria-hidden="true"></i>
+                <input
+                  id="loginPassword"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Enter your password"
+                  aria-describedby="loginPasswordError"
+                  required
+                />
+              </div>
+              <div class="login-field-error" id="loginPasswordError" aria-live="polite"></div>
+            </div>
+
+            <button class="btn-login" id="loginSubmitBtn" type="submit">
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span class="btn-text">Sign In</span>
+            </button>
+            <div class="login-error" id="loginError" role="alert"></div>
+            <div class="login-form-note">
+              <i class="fa fa-shield-alt" aria-hidden="true"></i>
+              <span>Secure admin session for live content, menu, and homepage updates.</span>
+            </div>
+          </form>
+        </section>
       </div>
     </div>
 
     <div id="loadingScreen" hidden>
-      <div class="loading-panel" role="status" aria-live="polite" aria-busy="true">
-        <div class="loading-mark">
-          <div class="loading-orbit"></div>
-          <div class="loading-orbit secondary"></div>
-          <div class="loading-core">
-            <img src="/assets/images/mb_logo.png" alt="Moody Brewer" />
+      <div class="loading-shell" role="status" aria-live="polite" aria-busy="true">
+        <div class="loading-panel">
+          <div class="loading-panel__header">
+            <div class="loading-mark">
+              <div class="loading-orbit"></div>
+              <div class="loading-orbit secondary"></div>
+              <div class="loading-core">
+                <img src="/assets/images/mb_logo.png" alt="Moody Brewer" />
+              </div>
+            </div>
+            <div class="loading-panel__copy">
+              <p class="loading-kicker">Opening Website Manager</p>
+              <h2 id="loadingTitle">Preparing your workspace</h2>
+              <p class="loading-detail" id="loadingDetail">
+                Pulling in the latest menu sections, homepage highlights, and special offers.
+              </p>
+              <div class="loading-meta">
+                <span class="loading-meta__pill"><i class="fa fa-shield-alt" aria-hidden="true"></i> Secure sign-in</span>
+                <span class="loading-meta__pill"><i class="fa fa-database" aria-hidden="true"></i> Live content sync</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <p class="loading-kicker">Opening Website Manager</p>
-        <h2 id="loadingTitle">Preparing your workspace</h2>
-        <p class="loading-detail" id="loadingDetail">
-          Pulling in the latest menu sections, homepage highlights, and special offers.
-        </p>
-        <div class="loading-progress" aria-hidden="true">
-          <span class="loading-progress__bar"></span>
-        </div>
-        <div class="loading-steps">
-          <div class="loading-step active" data-loading-step="1">
-            <span class="loading-step__dot"></span>
-            <span>Preparing access</span>
+          <div class="loading-progress" aria-hidden="true">
+            <span class="loading-progress__bar"></span>
           </div>
-          <div class="loading-step" data-loading-step="2">
-            <span class="loading-step__dot"></span>
-            <span>Loading website content</span>
-          </div>
-          <div class="loading-step" data-loading-step="3">
-            <span class="loading-step__dot"></span>
-            <span>Finalizing workspace</span>
+          <div class="loading-steps">
+            <div class="loading-step active" data-loading-step="1">
+              <span class="loading-step__dot"></span>
+              <span>Preparing access</span>
+            </div>
+            <div class="loading-step" data-loading-step="2">
+              <span class="loading-step__dot"></span>
+              <span>Loading website content</span>
+            </div>
+            <div class="loading-step" data-loading-step="3">
+              <span class="loading-step__dot"></span>
+              <span>Finalizing workspace</span>
+            </div>
           </div>
         </div>
       </div>
