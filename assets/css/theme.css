@@ -1213,10 +1213,16 @@ img.rounded-circle {
   min-height: 180px;
 }
 .menu-card__media img {
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 50%;
+  border-radius: 28px;
+  box-shadow: 0 10px 24px rgba(43,26,30,.12);
+}
+.menu-card__media .menu-card__fallback {
+  max-width: 180px;
+  border-radius: 28px;
   box-shadow: 0 10px 24px rgba(43,26,30,.12);
 }
 .menu-card__body {
