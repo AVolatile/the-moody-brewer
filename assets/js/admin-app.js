@@ -559,7 +559,11 @@
       create: 'Created',
       update: 'Updated',
       delete: 'Deleted',
-      reorder: 'Reordered'
+      reorder: 'Reordered',
+      approve: 'Approved',
+      reject: 'Rejected',
+      publish: 'Published',
+      login: 'Signed in'
     }[action] || 'Changed';
   }
 
@@ -568,7 +572,11 @@
       create: 'fa-plus',
       update: 'fa-pen',
       delete: 'fa-trash',
-      reorder: 'fa-sort'
+      reorder: 'fa-sort',
+      approve: 'fa-check',
+      reject: 'fa-ban',
+      publish: 'fa-upload',
+      login: 'fa-sign-in-alt'
     }[action] || 'fa-history';
   }
 
@@ -577,8 +585,40 @@
       create: 'success',
       update: 'info',
       delete: 'danger',
-      reorder: 'warm'
+      reorder: 'warm',
+      approve: 'success',
+      reject: 'danger',
+      publish: 'warm',
+      login: 'muted'
     }[action] || 'muted';
+  }
+
+  function auditEntryTitle(entry) {
+    if (entry.action === 'login') return (entry.actorUsername || 'Admin user') + ' signed in';
+    var target = entry.entityLabel || auditEntityTitle(entry.entityType);
+    return auditActionTitle(entry.action) + ' ' + target;
+  }
+
+  function auditChangeCountLabel(action, count) {
+    if (!count) return 'No field details';
+    if (action === 'create') return count === 1 ? '1 field set' : count + ' fields set';
+    if (action === 'delete') return count === 1 ? '1 field removed' : count + ' fields removed';
+    if (action === 'reorder') return count === 1 ? 'Order captured' : count + ' order changes';
+    return count === 1 ? '1 field changed' : count + ' fields changed';
+  }
+
+  function auditChangeStateLabel(action) {
+    if (action === 'create') return 'Set on create';
+    if (action === 'delete') return 'Removed value';
+    if (action === 'reorder') return 'Order update';
+    return 'Updated value';
+  }
+
+  function truncateAuditValue(value, maxLength) {
+    var text = String(value == null || value === '' ? '—' : value);
+    var limit = maxLength || 54;
+    if (text.length <= limit) return text;
+    return text.slice(0, limit - 3).trim() + '...';
   }
 
   function formatAuditTimestamp(value) {
@@ -594,14 +634,64 @@
     }).format(date);
   }
 
+  function formatAuditTimestampParts(value) {
+    if (!value) {
+      return {
+        date: 'Unknown date',
+        time: 'Unknown time',
+        full: 'Unknown time',
+        datetime: ''
+      };
+    }
+
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return {
+        date: String(value),
+        time: 'Recorded',
+        full: String(value),
+        datetime: String(value)
+      };
+    }
+
+    return {
+      date: new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date),
+      time: new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(date),
+      full: formatAuditTimestamp(value),
+      datetime: date.toISOString()
+    };
+  }
+
   function formatAuditDayLabel(value) {
     if (!value) return 'Recent activity';
     var date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Recent activity';
+    var dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var now = new Date();
+    var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var daysAgo = Math.round((todayStart.getTime() - dayStart.getTime()) / 86400000);
+    var calendarLabel = new Intl.DateTimeFormat(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date);
+
+    if (daysAgo === 0) return 'Today - ' + calendarLabel;
+    if (daysAgo === 1) return 'Yesterday - ' + calendarLabel;
+
     return new Intl.DateTimeFormat(undefined, {
       weekday: 'long',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      year: 'numeric'
     }).format(date);
   }
 
@@ -669,44 +759,105 @@
     ].join('');
   }
 
-  function renderAuditEntry(entry) {
-    var changes = (entry.changes || []).slice(0, 8);
-    var extraCount = Math.max(0, (entry.changes || []).length - changes.length);
+  function renderAuditPreview(changes) {
+    if (!changes.length) {
+      return '<div class="audit-change-preview empty"><i class="fa fa-info-circle" aria-hidden="true"></i><span>No field-level differences were captured for this entry.</span></div>';
+    }
+
+    var previewChanges = changes.slice(0, 3);
+    var extraCount = Math.max(0, changes.length - previewChanges.length);
 
     return [
-      '<article class="audit-entry">',
-        '<div class="audit-entry__icon ', auditActionTone(entry.action), '"><i class="fa ', auditActionIcon(entry.action), '"></i></div>',
+      '<div class="audit-change-preview" aria-label="Change summary">',
+        previewChanges.map(function(change) {
+          return [
+            '<span class="audit-preview-chip">',
+              '<strong>', escapeHtml(change.label || change.field || 'Change'), '</strong>',
+              '<span>', escapeHtml(truncateAuditValue(change.before, 30)), ' <i class="fa fa-arrow-right" aria-hidden="true"></i> ', escapeHtml(truncateAuditValue(change.after, 30)), '</span>',
+            '</span>'
+          ].join('');
+        }).join(''),
+        (extraCount ? '<span class="audit-preview-chip audit-preview-chip--more">+' + escapeHtml(String(extraCount)) + ' more</span>' : ''),
+      '</div>'
+    ].join('');
+  }
+
+  function renderAuditDetails(entry, changes) {
+    if (!changes.length) {
+      return '<p class="audit-entry__empty">This entry was recorded without before/after field details.</p>';
+    }
+
+    return [
+      '<details class="audit-details">',
+        '<summary>',
+          '<span><i class="fa fa-table" aria-hidden="true"></i>Review before/after details</span>',
+          '<span class="audit-details__count">', escapeHtml(auditChangeCountLabel(entry.action, changes.length)), '</span>',
+          '<i class="fa fa-chevron-down audit-details__chevron" aria-hidden="true"></i>',
+        '</summary>',
+        '<div class="audit-change-list">',
+          changes.map(function(change) {
+            return [
+              '<div class="audit-change">',
+                '<div class="audit-change__label">',
+                  '<strong>', escapeHtml(change.label || change.field || 'Change'), '</strong>',
+                  '<span>', escapeHtml(auditChangeStateLabel(entry.action)), '</span>',
+                '</div>',
+                '<div class="audit-change__values">',
+                  '<div class="audit-value audit-value--before">',
+                    '<span class="audit-value__label">Before</span>',
+                    '<p>', escapeHtml(change.before || '—'), '</p>',
+                  '</div>',
+                  '<i class="fa fa-arrow-right" aria-hidden="true"></i>',
+                  '<div class="audit-value audit-value--after">',
+                    '<span class="audit-value__label">After</span>',
+                    '<p>', escapeHtml(change.after || '—'), '</p>',
+                  '</div>',
+                '</div>',
+              '</div>'
+            ].join('');
+          }).join(''),
+          (entry.entityId ? '<p class="audit-system-meta">Record reference: ' + escapeHtml(auditEntityTitle(entry.entityType)) + ' #' + escapeHtml(String(entry.entityId)) + '</p>' : ''),
+        '</div>',
+      '</details>'
+    ].join('');
+  }
+
+  function renderAuditEntry(entry) {
+    var changes = entry.changes || [];
+    var tone = auditActionTone(entry.action);
+    var timestamp = formatAuditTimestampParts(entry.createdAt);
+    var entityTitle = auditEntityTitle(entry.entityType);
+    var actor = entry.actorUsername || 'Unknown user';
+    var targetLabel = entry.entityLabel || entityTitle;
+
+    return [
+      '<article class="audit-entry audit-entry--', tone, '" aria-label="', escapeHtml(auditEntryTitle(entry)), '">',
+        '<div class="audit-entry__rail" aria-hidden="true">',
+          '<div class="audit-entry__icon ', tone, '"><i class="fa ', auditActionIcon(entry.action), '"></i></div>',
+          '<span></span>',
+        '</div>',
         '<div class="audit-entry__body">',
           '<div class="audit-entry__header">',
-            '<div>',
-              '<div class="entity-eyebrow">', escapeHtml(auditEntityTitle(entry.entityType)), ' · ', escapeHtml(auditActionTitle(entry.action)), '</div>',
-              '<h4>', escapeHtml(entry.entityLabel || auditEntityTitle(entry.entityType)), '</h4>',
+            '<div class="audit-entry__title-group">',
+              '<div class="audit-entry__kicker">',
+                '<span class="audit-action-badge ', tone, '"><i class="fa ', auditActionIcon(entry.action), '" aria-hidden="true"></i>', escapeHtml(auditActionTitle(entry.action)), '</span>',
+                '<span>', escapeHtml(entityTitle), '</span>',
+              '</div>',
+              '<h4>', escapeHtml(auditEntryTitle(entry)), '</h4>',
             '</div>',
-            '<div class="audit-entry__meta">',
-              '<span class="meta-pill">', escapeHtml(entry.actorUsername || 'Unknown user'), '</span>',
-              '<span class="meta-pill muted">', escapeHtml(formatAuditTimestamp(entry.createdAt)), '</span>',
-            '</div>',
+            '<time class="audit-entry__time" datetime="', escapeHtml(timestamp.datetime), '" title="', escapeHtml(timestamp.full), '">',
+              '<span>', escapeHtml(timestamp.time), '</span>',
+              '<small>', escapeHtml(timestamp.date), '</small>',
+            '</time>',
+          '</div>',
+          '<div class="audit-entry__context" aria-label="Audit context">',
+            '<span><i class="fa fa-user" aria-hidden="true"></i>By ', escapeHtml(actor), '</span>',
+            '<span><i class="fa fa-layer-group" aria-hidden="true"></i>', escapeHtml(targetLabel), '</span>',
+            '<span><i class="fa fa-tasks" aria-hidden="true"></i>', escapeHtml(auditChangeCountLabel(entry.action, changes.length)), '</span>',
           '</div>',
           '<p class="audit-entry__summary">', escapeHtml(entry.summary || 'A website change was recorded.'), '</p>',
-          (changes.length
-            ? [
-                '<div class="audit-change-list">',
-                  changes.map(function(change) {
-                    return [
-                      '<div class="audit-change">',
-                        '<strong>', escapeHtml(change.label || change.field || 'Change'), '</strong>',
-                        '<div class="audit-change__values">',
-                          '<span>', escapeHtml(change.before || '—'), '</span>',
-                          '<i class="fa fa-arrow-right" aria-hidden="true"></i>',
-                          '<span>', escapeHtml(change.after || '—'), '</span>',
-                        '</div>',
-                      '</div>'
-                    ].join('');
-                  }).join(''),
-                  (extraCount ? '<p class="audit-entry__more">+' + escapeHtml(String(extraCount)) + ' more changes captured in this entry.</p>' : ''),
-                '</div>'
-              ].join('')
-            : '<p class="audit-entry__empty">This entry was recorded without field-level differences.</p>'),
+          renderAuditPreview(changes),
+          renderAuditDetails(entry, changes),
         '</div>',
       '</article>'
     ].join('');
@@ -1134,8 +1285,17 @@
 
     if (auditSearchInput) {
       auditSearchInput.addEventListener('input', function() {
+        var selectionStart = this.selectionStart;
+        var selectionEnd = this.selectionEnd;
         state.auditSearch = this.value;
         renderCurrentView();
+        var nextInput = document.getElementById('auditSearchInput');
+        if (nextInput) {
+          nextInput.focus();
+          if (nextInput.setSelectionRange && selectionStart != null && selectionEnd != null) {
+            nextInput.setSelectionRange(selectionStart, selectionEnd);
+          }
+        }
       });
     }
 
