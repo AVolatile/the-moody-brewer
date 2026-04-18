@@ -114,6 +114,7 @@ async function ensureSchema(sql) {
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0`);
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS position INTEGER`);
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS promotion_id INTEGER`);
+  await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS price_type TEXT NOT NULL DEFAULT 'numeric'`);
 
   await sql(`ALTER TABLE promotions ADD COLUMN IF NOT EXISTS badge_text TEXT`);
   await sql(`ALTER TABLE promotions ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0`);

@@ -355,6 +355,9 @@ function mapCategoryRow(row) {
 }
 
 function buildPriceSummary(item, category, promotion) {
+  if (item.priceType === 'tbd') return 'TBD';
+  if (item.priceType === 'in_store') return 'See in store';
+
   const labels = (category && category.priceLabels) || [];
   const firstLabel = labels[0] || 'M';
   const secondLabel = labels[1] || 'L';
@@ -365,7 +368,7 @@ function buildPriceSummary(item, category, promotion) {
     const largeValue = item.effectivePriceLarge != null ? item.effectivePriceLarge : item.priceLarge;
     if (mediumValue != null) parts.push(`${firstLabel} ${formatMoney(mediumValue)}`);
     if (largeValue != null) parts.push(`${secondLabel} ${formatMoney(largeValue)}`);
-    return parts.join(' / ');
+    return parts.length ? parts.join(' / ') : '';
   }
 
   const singleValue = item.effectivePriceSingle != null ? item.effectivePriceSingle : item.priceSingle;
@@ -410,6 +413,7 @@ function mapMenuItemRow(row, categoriesById) {
     categorySlug: row.category_slug,
     name: row.name,
     description: row.description || '',
+    priceType: row.price_type || 'numeric',
     priceSingle,
     priceMedium,
     priceLarge,
@@ -1061,35 +1065,42 @@ async function getAdminSnapshot() {
 function validateCategoryPrices(category, payload, existingItem) {
   const existing = existingItem || {};
 
+  const priceType = payload.priceType !== undefined
+    ? normalizeString(payload.priceType, 'Price type', { maxLength: 20 }) || 'numeric'
+    : existing.price_type || 'numeric';
+
   const priceSingle = payload.priceSingle !== undefined
-    ? normalizePrice(payload.priceSingle, 'Price')
+    ? normalizePrice(payload.priceSingle, 'Price', { required: false })
     : existing.price_single != null
       ? Number(existing.price_single)
       : existing.price_medium != null && !category.allowMultiPrice
         ? Number(existing.price_medium)
         : null;
   const priceMedium = payload.priceMedium !== undefined
-    ? normalizePrice(payload.priceMedium, 'Medium price')
+    ? normalizePrice(payload.priceMedium, 'Medium price', { required: false })
     : existing.price_medium != null
       ? Number(existing.price_medium)
       : category.allowMultiPrice && existing.price_single != null
         ? Number(existing.price_single)
         : null;
   const priceLarge = payload.priceLarge !== undefined
-    ? normalizePrice(payload.priceLarge, 'Large price')
+    ? normalizePrice(payload.priceLarge, 'Large price', { required: false })
     : existing.price_large != null
       ? Number(existing.price_large)
       : null;
 
-  if (category.allowMultiPrice) {
-    if (priceMedium == null && priceLarge == null) {
-      throw createHttpError(400, 'At least one category price is required.');
+  if (priceType === 'numeric') {
+    if (category.allowMultiPrice) {
+      if (priceMedium == null && priceLarge == null) {
+        throw createHttpError(400, 'At least one category price is required.');
+      }
+    } else if (priceSingle == null) {
+      throw createHttpError(400, 'Price is required.');
     }
-  } else if (priceSingle == null) {
-    throw createHttpError(400, 'Price is required.');
   }
 
   return {
+    price_type: priceType,
     price_single: category.allowMultiPrice ? null : priceSingle,
     price_medium: category.allowMultiPrice ? priceMedium : null,
     price_large: category.allowMultiPrice ? priceLarge : null
@@ -1276,9 +1287,9 @@ async function createMenuItem(payload, actor) {
     `
       INSERT INTO menu_items (
         category_id, name, description, price_single, price_medium, price_large,
-        image_url, image_data, image_mime, is_featured, is_available, display_order, promotion_id
+        image_url, image_data, image_mime, is_featured, is_available, display_order, promotion_id, price_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `,
     [
@@ -1294,7 +1305,8 @@ async function createMenuItem(payload, actor) {
       normalizeBoolean(payload.isFeatured, false),
       normalizeBoolean(payload.isAvailable, true),
       displayOrder,
-      promotionId
+      promotionId,
+      prices.price_type
     ]
   );
 
@@ -1361,6 +1373,7 @@ async function updateMenuItem(payload, actor) {
     price_single: prices.price_single,
     price_medium: prices.price_medium,
     price_large: prices.price_large,
+    price_type: prices.price_type,
     image_url: imageFields.image_url,
     image_data: imageFields.image_data,
     image_mime: imageFields.image_mime,
