@@ -535,6 +535,8 @@
 
   function priceSummary(item, category) {
     if (!item) return '—';
+    if (item.priceType === 'tbd') return 'TBD';
+    if (item.priceType === 'in_store') return 'See in store';
     if (category && category.allowMultiPrice) {
       var labels = category.priceLabels || [];
       var parts = [];
@@ -1741,7 +1743,18 @@
   function itemPriceFieldsMarkup(record, categoryId) {
     var category = getCategoryById(categoryId);
     var labels = category ? category.priceLabels || [] : [];
+    var priceType = record.priceType || 'numeric';
     return [
+      '<div class="price-row">',
+        '<div class="form-group">',
+          '<label class="form-label" for="itemPriceType">Price format</label>',
+          '<select class="form-control" id="itemPriceType" name="priceType">',
+            option('numeric', 'Numeric price', priceType === 'numeric'),
+            option('tbd', 'TBD', priceType === 'tbd'),
+            option('in_store', 'See in store', priceType === 'in_store'),
+          '</select>',
+        '</div>',
+      '</div>',
       '<div class="price-row', category && category.allowMultiPrice ? ' field-hidden' : '', '" id="singlePriceRow">',
         '<div class="form-group">',
           '<label class="form-label" for="itemPriceSingle">', escapeHtml(labels[0] || 'Price'), '</label>',
@@ -1843,6 +1856,10 @@
     }
 
     if (entity === 'item') {
+      var priceTypeField = document.getElementById('itemPriceType');
+      if (priceTypeField) {
+        priceTypeField.addEventListener('change', refreshItemPriceFields);
+      }
       syncItemComposerUI();
     }
 
@@ -1857,6 +1874,7 @@
 
   function refreshItemPriceFields() {
     var categoryField = document.getElementById('itemCategory');
+    var priceTypeField = document.getElementById('itemPriceType');
     if (!categoryField) return;
 
     var categoryId = categoryField.value;
@@ -1873,8 +1891,10 @@
     mediumLabel.textContent = (category.priceLabels && category.priceLabels[0]) || 'M';
     largeLabel.textContent = (category.priceLabels && category.priceLabels[1]) || 'L';
 
-    singleRow.classList.toggle('field-hidden', category.allowMultiPrice);
-    multiRow.classList.toggle('field-hidden', !category.allowMultiPrice);
+    var isNumeric = !priceTypeField || priceTypeField.value === 'numeric';
+
+    singleRow.classList.toggle('field-hidden', !isNumeric || category.allowMultiPrice);
+    multiRow.classList.toggle('field-hidden', !isNumeric || !category.allowMultiPrice);
   }
 
   function syncItemImageModeOptions() {
@@ -2543,6 +2563,7 @@
       payload.categoryId = values.categoryId;
       payload.name = values.name;
       payload.description = values.description;
+      payload.priceType = values.priceType;
       payload.priceSingle = values.priceSingle;
       payload.priceMedium = values.priceMedium;
       payload.priceLarge = values.priceLarge;

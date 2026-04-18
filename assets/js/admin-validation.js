@@ -322,6 +322,9 @@
           minLength: 'Description must be at least 5 characters.',
           maxLength: 'Description must be 600 characters or fewer.'
         }, { required: true, minLength: 5, maxLength: 600 }),
+        priceType: textRules({
+          required: 'Price type is required.'
+        }, { required: true }),
         priceSingle: numberRules({
           required: 'Price is required.',
           type: 'Price must be a valid number.',
@@ -329,8 +332,8 @@
         }, {
           required: !isMultiPrice,
           min: 0,
-          when: function() {
-            return !isMultiPrice;
+          when: function(values) {
+            return normalizeText(values.priceType || 'numeric') === 'numeric' && !isMultiPrice;
           }
         }),
         priceMedium: numberRules({
@@ -338,8 +341,8 @@
           min: 'Medium price cannot be negative.'
         }, {
           min: 0,
-          when: function() {
-            return isMultiPrice;
+          when: function(values) {
+            return normalizeText(values.priceType || 'numeric') === 'numeric' && isMultiPrice;
           }
         }),
         priceLarge: numberRules({
@@ -347,8 +350,8 @@
           min: 'Large price cannot be negative.'
         }, {
           min: 0,
-          when: function() {
-            return isMultiPrice;
+          when: function(values) {
+            return normalizeText(values.priceType || 'numeric') === 'numeric' && isMultiPrice;
           }
         }),
         displayOrder: integerRules({
@@ -372,6 +375,11 @@
       },
       custom: [
         function(values, ctx, api) {
+          var type = normalizeText(values.priceType || 'numeric');
+          if (type !== 'numeric' && type !== 'tbd' && type !== 'in_store') {
+            api.addError('priceType', 'Choose a valid price type.');
+          }
+          if (type !== 'numeric') return;
           if (!isMultiPrice) return;
           if (!isBlank(values.priceMedium) || !isBlank(values.priceLarge)) return;
           api.addError('priceMedium', 'Add at least one size price.');

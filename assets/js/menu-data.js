@@ -89,6 +89,7 @@
       var item = {
         name: rawItem && rawItem.name ? String(rawItem.name).trim() : 'Featured Item',
         description: rawItem && rawItem.description ? String(rawItem.description).trim() : '',
+        priceType: rawItem && rawItem.priceType ? String(rawItem.priceType).trim() : 'numeric',
         priceSingle: Number.isFinite(price) ? price : null,
         effectivePriceSingle: Number.isFinite(price) ? price : null,
         imageUrl: rawItem && rawItem.imageUrl ? String(rawItem.imageUrl).trim() : '',
@@ -150,6 +151,10 @@
   }
 
   function buildSinglePriceMarkup(item) {
+    var priceType = item.priceType || 'numeric';
+    if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
+    if (priceType === 'in_store') return '<span class="price-current">See in store</span>';
+
     var current = item.effectivePriceSingle != null ? item.effectivePriceSingle : item.priceSingle;
     var original = item.priceSingle;
     if (current == null && item.priceMedium != null) current = item.effectivePriceMedium != null ? item.effectivePriceMedium : item.priceMedium;
@@ -168,6 +173,10 @@
   }
 
   function buildMultiPriceMarkup(item, category) {
+    var priceType = item.priceType || 'numeric';
+    if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
+    if (priceType === 'in_store') return '<span class="price-current">See in store</span>';
+
     var labels = category.priceLabels || [];
     var firstLabel = labels[0] || 'M';
     var secondLabel = labels[1] || 'L';
