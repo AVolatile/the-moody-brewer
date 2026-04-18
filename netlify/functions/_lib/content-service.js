@@ -475,6 +475,7 @@ function mapFeaturedItemRow(row) {
         id: row.menu_item_id,
         name: row.menu_item_name,
         description: row.menu_item_description || '',
+        priceType: row.menu_item_price_type || 'numeric',
         priceSingle: row.menu_item_price_single != null ? Number(row.menu_item_price_single) : null,
         priceMedium: row.menu_item_price_medium != null ? Number(row.menu_item_price_medium) : null,
         priceLarge: row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
@@ -488,6 +489,7 @@ function mapFeaturedItemRow(row) {
         categorySlug: row.menu_item_category_slug,
         priceSummary: buildPriceSummary(
           {
+            priceType: row.menu_item_price_type || 'numeric',
             priceSingle: row.menu_item_price_single != null ? Number(row.menu_item_price_single) : null,
             priceMedium: row.menu_item_price_medium != null ? Number(row.menu_item_price_medium) : null,
             priceLarge: row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
@@ -900,6 +902,7 @@ async function fetchMenuItems(categories) {
       c.slug AS category_slug,
       i.name,
       i.description,
+      i.price_type,
       i.price_single::float AS price_single,
       i.price_medium::float AS price_medium,
       i.price_large::float AS price_large,
@@ -969,6 +972,7 @@ async function fetchFeaturedItems() {
       END AS promotion_is_current,
       mi.name AS menu_item_name,
       mi.description AS menu_item_description,
+      mi.price_type AS menu_item_price_type,
       mi.price_single::float AS menu_item_price_single,
       mi.price_medium::float AS menu_item_price_medium,
       mi.price_large::float AS menu_item_price_large,
