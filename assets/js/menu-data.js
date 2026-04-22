@@ -77,6 +77,14 @@
     });
   }
 
+  function canUseLocalFallback() {
+    var host = window.location && window.location.hostname ? window.location.hostname : '';
+    return window.location.protocol === 'file:' ||
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0';
+  }
+
   function buildLocalFallbackContent(payload) {
     var rawItems = payload && Array.isArray(payload.items) ? payload.items : [];
     var categories = [];
@@ -448,6 +456,11 @@
         renderMenuPage(document.getElementById('menu-content-root'), data.categories || []);
       })
       .catch(function(apiError) {
+        if (!canUseLocalFallback()) {
+          showFetchError(apiError);
+          return;
+        }
+
         return fetchJson(LOCAL_FALLBACK_ENDPOINT)
           .then(buildLocalFallbackContent)
           .then(function(data) {

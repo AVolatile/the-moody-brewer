@@ -16,6 +16,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/media"
+  to = "/.netlify/functions/media"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/admin/auth"
   to = "/.netlify/functions/admin-auth"
   status = 200

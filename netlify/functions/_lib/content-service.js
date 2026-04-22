@@ -332,10 +332,36 @@ function serializePromotion(row) {
   return promotion;
 }
 
-function imageFromFields(fields) {
+function buildMediaUrl(type, id, version) {
+  if (!type || !id) return null;
+  const params = new URLSearchParams({
+    type,
+    id: String(id)
+  });
+
+  if (version) {
+    params.set('v', String(version));
+  }
+
+  return `/api/media?${params.toString()}`;
+}
+
+function isDataImageUrl(value) {
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(String(value || '').trim());
+}
+
+function hasEmbeddedImage(fields) {
+  return Boolean(fields && (((fields.image_data || fields.has_image_data) && fields.image_mime) || fields.has_image_data || isDataImageUrl(fields.image_url)));
+}
+
+function hasImageFields(fields) {
+  return Boolean(fields && (fields.image_url || hasEmbeddedImage(fields)));
+}
+
+function imageFromFields(fields, options) {
   if (!fields) return null;
-  if (fields.image_data && fields.image_mime) {
-    return `data:${fields.image_mime};base64,${fields.image_data}`;
+  if (hasEmbeddedImage(fields)) {
+    return buildMediaUrl(options && options.type, options && options.id, options && options.version) || fields.image_url || null;
   }
   return fields.image_url || null;
 }
@@ -420,7 +446,7 @@ function mapMenuItemRow(row, categoriesById) {
     effectivePriceSingle: applyPromotion(priceSingle, promotion),
     effectivePriceMedium: applyPromotion(priceMedium, promotion),
     effectivePriceLarge: applyPromotion(priceLarge, promotion),
-    imageUrl: imageFromFields(row),
+    imageUrl: imageFromFields(row, { type: 'menu-item', id: row.id, version: row.updated_at }),
     isFeatured: Boolean(row.is_featured),
     isAvailable: Boolean(row.is_available),
     displayOrder: row.display_order || 0,
@@ -481,9 +507,9 @@ function mapFeaturedItemRow(row) {
         priceLarge: row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
         imageUrl: imageFromFields({
           image_url: row.menu_item_image_url,
-          image_data: row.menu_item_image_data,
+          has_image_data: row.menu_item_has_image_data,
           image_mime: row.menu_item_image_mime
-        }),
+        }, { type: 'menu-item', id: row.menu_item_id, version: row.menu_item_updated_at }),
         isAvailable: Boolean(row.menu_item_is_available),
         categoryName: row.menu_item_category_name,
         categorySlug: row.menu_item_category_slug,
@@ -517,7 +543,7 @@ function mapFeaturedItemRow(row) {
     menuItemId: row.menu_item_id || null,
     headline: row.headline,
     subtext: row.subtext || '',
-    imageUrl: imageFromFields(row) || (linkedItem ? linkedItem.imageUrl : null),
+    imageUrl: imageFromFields(row, { type: 'featured-item', id: row.id, version: row.updated_at }) || (linkedItem ? linkedItem.imageUrl : null),
     displayOrder: row.display_order || 0,
     isActive: Boolean(row.is_active),
     promotionId: row.promotion_id || null,
@@ -906,12 +932,21 @@ async function fetchMenuItems(categories) {
       i.price_single::float AS price_single,
       i.price_medium::float AS price_medium,
       i.price_large::float AS price_large,
-      i.image_url,
-      i.image_data,
+      CASE
+        WHEN LOWER(COALESCE(i.image_url, '')) LIKE 'data:image/%;base64,%' THEN NULL
+        WHEN LENGTH(TRIM(COALESCE(i.image_url, ''))) > 2048 THEN NULL
+        ELSE i.image_url
+      END AS image_url,
+      (
+        (i.image_data IS NOT NULL AND i.image_mime IS NOT NULL)
+        OR LOWER(COALESCE(i.image_url, '')) LIKE 'data:image/%;base64,%'
+        OR LENGTH(TRIM(COALESCE(i.image_url, ''))) > 2048
+      ) AS has_image_data,
       i.image_mime,
       i.is_featured,
       i.is_available,
       i.display_order,
+      i.updated_at::text AS updated_at,
       i.promotion_id,
       p.title AS promotion_title,
       p.description AS promotion_description,
@@ -947,12 +982,21 @@ async function fetchFeaturedItems() {
       f.menu_item_id,
       f.headline,
       f.subtext,
-      f.image_url,
-      f.image_data,
+      CASE
+        WHEN LOWER(COALESCE(f.image_url, '')) LIKE 'data:image/%;base64,%' THEN NULL
+        WHEN LENGTH(TRIM(COALESCE(f.image_url, ''))) > 2048 THEN NULL
+        ELSE f.image_url
+      END AS image_url,
+      (
+        (f.image_data IS NOT NULL AND f.image_mime IS NOT NULL)
+        OR LOWER(COALESCE(f.image_url, '')) LIKE 'data:image/%;base64,%'
+        OR LENGTH(TRIM(COALESCE(f.image_url, ''))) > 2048
+      ) AS has_image_data,
       f.image_mime,
       f.promotion_id,
       f.display_order,
       f.is_active,
+      f.updated_at::text AS updated_at,
       p.title AS promotion_title,
       p.description AS promotion_description,
       p.badge_text AS promotion_badge_text,
@@ -976,10 +1020,19 @@ async function fetchFeaturedItems() {
       mi.price_single::float AS menu_item_price_single,
       mi.price_medium::float AS menu_item_price_medium,
       mi.price_large::float AS menu_item_price_large,
-      mi.image_url AS menu_item_image_url,
-      mi.image_data AS menu_item_image_data,
+      CASE
+        WHEN LOWER(COALESCE(mi.image_url, '')) LIKE 'data:image/%;base64,%' THEN NULL
+        WHEN LENGTH(TRIM(COALESCE(mi.image_url, ''))) > 2048 THEN NULL
+        ELSE mi.image_url
+      END AS menu_item_image_url,
+      (
+        (mi.image_data IS NOT NULL AND mi.image_mime IS NOT NULL)
+        OR LOWER(COALESCE(mi.image_url, '')) LIKE 'data:image/%;base64,%'
+        OR LENGTH(TRIM(COALESCE(mi.image_url, ''))) > 2048
+      ) AS menu_item_has_image_data,
       mi.image_mime AS menu_item_image_mime,
       mi.is_available AS menu_item_is_available,
+      mi.updated_at::text AS menu_item_updated_at,
       mc.name AS menu_item_category_name,
       mc.slug AS menu_item_category_slug,
       mc.price_labels AS menu_item_price_labels,
@@ -1271,7 +1324,7 @@ async function createMenuItem(payload, actor) {
 
   const prices = validateCategoryPrices(category, payload);
   const imageFields = resolveImageFields(payload);
-  if (category.requireImage && !imageFromFields(imageFields)) {
+  if (category.requireImage && !hasImageFields(imageFields)) {
     throw createHttpError(400, 'This category requires an image.');
   }
 
@@ -1346,7 +1399,7 @@ async function updateMenuItem(payload, actor) {
 
   const prices = validateCategoryPrices(category, payload, current);
   const imageFields = resolveImageFields(payload, current);
-  if (category.requireImage && !imageFromFields(imageFields)) {
+  if (category.requireImage && !hasImageFields(imageFields)) {
     throw createHttpError(400, 'This category requires an image.');
   }
 

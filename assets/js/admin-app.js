@@ -153,6 +153,10 @@
     return placeholder ? placeholder.token : '';
   }
 
+  function isGeneratedMediaUrl(value) {
+    return /^\/api\/media(?:\?|$)/i.test(String(value || '').trim());
+  }
+
   function suggestImagePlaceholderKey(category) {
     var categoryText = [
       category && category.name ? category.name : '',
@@ -1438,7 +1442,7 @@
     var selectedMode = settings.mode || (currentPlaceholder ? 'placeholder' : (hasImage ? 'keep' : (category && category.requireImage ? 'upload' : 'remove')));
     var hasPreviewImage = hasImage && !currentPlaceholder;
     var showPlaceholderPreview = Boolean(currentPlaceholder) || selectedMode === 'placeholder';
-    var imageUrlValue = currentPlaceholder ? '' : (recordImageUrl || '');
+    var imageUrlValue = currentPlaceholder || isGeneratedMediaUrl(recordImageUrl) ? '' : (recordImageUrl || '');
     return [
       '<section class="item-step item-step--media">',
         stepHeaderMarkup({
