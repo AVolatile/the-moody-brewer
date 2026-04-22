@@ -97,7 +97,7 @@
     overview: { title: 'Overview', createLabel: 'Add Menu Item', createEntity: 'item' },
     categories: { title: 'Menu Sections', createLabel: 'Add Section', createEntity: 'category' },
     items: { title: 'Menu Items', createLabel: 'Add Menu Item', createEntity: 'item' },
-    featured: { title: 'Homepage Highlights', createLabel: 'Add Highlight', createEntity: 'featured' },
+    featured: { title: 'Menu Spotlight', createLabel: 'Add Spotlight Item', createEntity: 'featured' },
     promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' },
     audit: { title: 'Audit Log', createLabel: '', createEntity: '', canCreate: false }
   };
@@ -277,7 +277,7 @@
       .then(function() {
         updateLoadingScreen(
           'Loading website content',
-          'Pulling in the latest menu sections, items, homepage highlights, and special offers.',
+          'Pulling in the latest menu sections, items, homepage spotlights, and special offers.',
           2
         );
         return loadSnapshot();
@@ -422,7 +422,7 @@
       return;
     }
 
-    refs.loginMessage.textContent = 'Sign in to update the menu, homepage highlights, and special offers.';
+    refs.loginMessage.textContent = 'Sign in to update the menu, homepage spotlights, and special offers.';
   }
 
   function setLoginSubmitting(isLoading) {
@@ -555,7 +555,7 @@
     return {
       category: 'Menu Section',
       item: 'Menu Item',
-      featured: 'Homepage Highlight',
+      featured: 'Menu Spotlight',
       promotion: 'Special Offer'
     }[entityType] || 'Website Change';
   }
@@ -888,7 +888,7 @@
             '<option value="all"', state.auditEntityFilter === 'all' ? ' selected' : '', '>All areas</option>',
             '<option value="item"', state.auditEntityFilter === 'item' ? ' selected' : '', '>Menu items</option>',
             '<option value="category"', state.auditEntityFilter === 'category' ? ' selected' : '', '>Menu sections</option>',
-            '<option value="featured"', state.auditEntityFilter === 'featured' ? ' selected' : '', '>Homepage highlights</option>',
+            '<option value="featured"', state.auditEntityFilter === 'featured' ? ' selected' : '', '>Menu spotlight</option>',
             '<option value="promotion"', state.auditEntityFilter === 'promotion' ? ' selected' : '', '>Special offers</option>',
           '</select>',
           '<select class="toolbar-select" id="auditActionFilter" aria-label="Filter audit log by action">',
@@ -912,7 +912,7 @@
                   '</section>'
                 ].join('');
               }).join('') + '</div>'
-            : '<div class="empty-state compact"><i class="fa fa-history"></i><h4>No audit entries match this view</h4><p>Changes to menu items, sections, highlights, and offers will appear here for troubleshooting.</p></div>'),
+            : '<div class="empty-state compact"><i class="fa fa-history"></i><h4>No audit entries match this view</h4><p>Changes to menu items, sections, spotlight items, and offers will appear here for troubleshooting.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -1003,19 +1003,19 @@
           '</div>',
         '</section>',
         '<section class="section-card">',
-          '<div class="section-card-header"><h3>Homepage Highlights</h3></div>',
+          '<div class="section-card-header"><h3>Menu Spotlight</h3></div>',
           '<div class="content-pad">',
             (featuredItems.length ? featuredItems.map(function(item) {
               return [
                 '<div class="overview-list-item">',
                   '<div>',
                     '<strong>', escapeHtml(item.headline), '</strong>',
-                    '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Homepage highlight')), '</p>',
+                    '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Menu spotlight')), '</p>',
                   '</div>',
                   '<span class="meta-pill ', item.isActive ? 'success' : 'muted', '">', item.isActive ? 'Visible' : 'Hidden', '</span>',
                 '</div>'
               ].join('');
-            }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No highlights yet</h4><p>Add a homepage feature whenever you want to spotlight a favorite.</p></div>'),
+            }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No spotlight items yet</h4><p>Select menu items whenever you want to spotlight a favorite on the homepage.</p></div>'),
           '</div>',
         '</section>',
       '</div>',
@@ -1184,8 +1184,8 @@
     return [
       '<section class="section-card">',
         '<div class="section-card-header">',
-          '<h3>Homepage Highlights</h3>',
-          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="featured"><i class="fa fa-plus"></i><span>Add Highlight</span></button>',
+          '<h3>Menu Spotlight</h3>',
+          '<button class="btn-topbar primary small-btn" type="button" data-action="create" data-entity="featured"><i class="fa fa-plus"></i><span>Add Spotlight Item</span></button>',
         '</div>',
         '<div class="menu-grid">',
           (items.length ? items.map(function(item, index) {
@@ -1196,14 +1196,14 @@
                   (item.isActive ? '<span class="featured-badge">Live</span>' : ''),
                 '</div>',
                 '<div class="item-card-body">',
-                  '<div class="item-card-cat">' + escapeHtml(item.linkedItem ? item.linkedItem.name : 'Homepage feature') + '</div>',
+                  '<div class="item-card-cat">' + escapeHtml(item.linkedItem ? item.linkedItem.name : 'Menu spotlight item') + '</div>',
                   '<div class="item-card-name">' + escapeHtml(item.headline) + '</div>',
                   '<div class="item-card-desc">' + escapeHtml(item.subtext || 'Add a short supporting line whenever you would like one.') + '</div>',
                   '<div class="item-status-row">',
                     '<span class="meta-pill ' + (item.isActive ? 'success' : 'muted') + '">' + (item.isActive ? 'Visible' : 'Hidden') + '</span>',
                     (item.promotion ? '<span class="meta-pill warm">' + escapeHtml(item.promotion.label || item.promotion.title) + '</span>' : ''),
                   '</div>',
-                  '<div class="item-card-price">' + escapeHtml(item.linkedItem ? item.linkedItem.priceSummary : 'Homepage highlight') + '</div>',
+                  '<div class="item-card-price">' + escapeHtml(item.linkedItem ? item.linkedItem.priceSummary : 'Menu spotlight') + '</div>',
                   '<div class="item-card-actions">',
                     '<button class="btn-card edit" type="button" data-action="edit" data-entity="featured" data-id="' + item.id + '"><i class="fa fa-edit"></i>Edit</button>',
                     '<button class="btn-card del" type="button" data-action="delete" data-entity="featured" data-id="' + item.id + '" data-label="' + escapeHtml(item.headline) + '"><i class="fa fa-trash"></i>Delete</button>',
@@ -1215,7 +1215,7 @@
                 '</div>',
               '</article>'
             ].join('');
-          }).join('') : '<div class="empty-state"><i class="fa fa-star"></i><h4>No homepage highlights yet</h4><p>Add a highlight whenever you want to spotlight something special.</p></div>'),
+          }).join('') : '<div class="empty-state"><i class="fa fa-star"></i><h4>No menu spotlight items yet</h4><p>Select menu items here to control what appears in the homepage spotlight section.</p></div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -1642,20 +1642,21 @@
     record = record || {};
     return [
       '<div class="form-group">',
-        '<label class="form-label" for="featuredMenuItem">Linked Menu Item</label>',
+        '<label class="form-label" for="featuredMenuItem">Menu item <span>*</span></label>',
         '<select class="form-control" id="featuredMenuItem" name="menuItemId">',
-          option('', 'Custom homepage feature', !record.menuItemId),
+          option('', 'Choose a menu item', !record.menuItemId),
           sortByDisplayOrder(state.snapshot.menuItems).map(function(item) {
             return option(item.id, item.name, Number(item.id) === Number(record.menuItemId));
           }).join(''),
         '</select>',
+        '<p class="form-hint">This controls the cards in the homepage Menu Spotlight section.</p>',
       '</div>',
       '<div class="form-group">',
-        '<label class="form-label" for="featuredHeadline">Headline <span>*</span></label>',
+        '<label class="form-label" for="featuredHeadline">Spotlight headline <span>*</span></label>',
         '<input class="form-control" id="featuredHeadline" name="headline" type="text" value="' + escapeHtml(record.headline || '') + '" required>',
       '</div>',
       '<div class="form-group">',
-        '<label class="form-label" for="featuredSubtext">Subtext</label>',
+        '<label class="form-label" for="featuredSubtext">Spotlight note</label>',
         '<textarea class="form-control" id="featuredSubtext" name="subtext">' + escapeHtml(record.subtext || '') + '</textarea>',
       '</div>',
       '<div class="price-row">',
@@ -1669,12 +1670,16 @@
           '</select>',
         '</div>',
         '<div class="form-group">',
-          '<label class="form-label" for="featuredDisplayOrder">Order on Page</label>',
+          '<label class="form-label" for="featuredDisplayOrder">Spotlight order</label>',
           '<input class="form-control" id="featuredDisplayOrder" name="displayOrder" type="number" min="1" value="' + escapeHtml(record.displayOrder || '') + '">',
         '</div>',
       '</div>',
-      imageFieldMarkup(record.imageUrl),
-      toggleMarkup('Show this on the homepage', 'Turn this off to keep it saved without displaying it.', 'isActive', record.isActive !== false)
+      imageFieldMarkup(record.imageUrl, {
+        label: 'Optional Image',
+        title: 'Override the menu item photo',
+        intro: 'Leave this alone to use the selected menu item photo on the homepage.'
+      }),
+      toggleMarkup('Show this in Menu Spotlight', 'Turn this off to keep it saved without displaying it on the homepage.', 'isActive', record.isActive !== false)
     ].join('');
   }
 
@@ -1801,7 +1806,7 @@
     refs.drawerTitle.textContent = (mode === 'edit' ? 'Edit ' : 'Add ') + {
       category: 'Section',
       item: 'Menu Item',
-      featured: 'Homepage Highlight',
+      featured: 'Menu Spotlight',
       promotion: 'Offer'
     }[entity];
 
@@ -1872,6 +1877,13 @@
       if (discountType) {
         discountType.addEventListener('change', syncDiscountValueVisibility);
         syncDiscountValueVisibility();
+      }
+    }
+
+    if (entity === 'featured') {
+      var featuredMenuItem = document.getElementById('featuredMenuItem');
+      if (featuredMenuItem) {
+        featuredMenuItem.addEventListener('change', syncFeaturedMenuItemDefaults);
       }
     }
   }
@@ -1960,6 +1972,22 @@
     var group = document.getElementById('discountValueGroup');
     if (!discountType || !group) return;
     group.classList.toggle('field-hidden', discountType.value === 'text');
+  }
+
+  function syncFeaturedMenuItemDefaults() {
+    var menuItemField = document.getElementById('featuredMenuItem');
+    var headlineField = document.getElementById('featuredHeadline');
+    var subtextField = document.getElementById('featuredSubtext');
+    var menuItem = menuItemField ? getMenuItemById(menuItemField.value) : null;
+
+    if (!menuItem) return;
+
+    if (headlineField && !headlineField.value.trim()) {
+      headlineField.value = menuItem.name || '';
+    }
+    if (subtextField && !subtextField.value.trim()) {
+      subtextField.value = menuItem.description || '';
+    }
   }
 
   function getSelectedImagePlaceholderKey() {
@@ -2480,6 +2508,8 @@
       addFieldError(mapped, 'categoryId', 'Choose a valid category.');
     } else if (message === 'Promotion not found.') {
       addFieldError(mapped, 'promotionId', 'Choose a valid offer.');
+    } else if (message === 'Linked menu item is required.') {
+      addFieldError(mapped, 'menuItemId', 'Choose a menu item to spotlight.');
     } else if (message === 'Menu item not found.') {
       addFieldError(mapped, 'menuItemId', 'Choose a valid menu item.');
     } else if (message === 'Item name is required.') {

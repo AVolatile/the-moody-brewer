@@ -264,6 +264,45 @@
     api.addError('imageMode', 'Please provide a valid image.');
   }
 
+  function validateOptionalImageField(values, context, api) {
+    var imageMode = normalizeText(values.imageMode || '').toLowerCase();
+
+    if (!imageMode || imageMode === 'keep' || imageMode === 'remove') return;
+
+    if (imageMode === 'upload') {
+      if (!context || (!context.uploadFile && !context.uploadData && !context.uploadPending)) {
+        api.addError('imageUpload', 'Choose an image or switch photo source.');
+        return;
+      }
+
+      var uploadImageError = getUploadImageError(context);
+      if (uploadImageError) api.addError('imageUpload', uploadImageError);
+      return;
+    }
+    if (imageMode === 'url') {
+      if (isBlank(values.imageUrl)) {
+        api.addError('imageUrl', 'Image link is required for this photo source.');
+        return;
+      }
+      if (!isValidImageReference(values.imageUrl)) {
+        api.addError('imageUrl', 'Please provide a valid image.');
+      }
+      return;
+    }
+    if (imageMode === 'placeholder') {
+      if (isBlank(values.imagePlaceholder)) {
+        api.addError('imagePlaceholder', 'Choose a placeholder image.');
+        return;
+      }
+      if (!isValidPlaceholderKey(values.imagePlaceholder)) {
+        api.addError('imagePlaceholder', 'Choose a valid placeholder image.');
+      }
+      return;
+    }
+
+    api.addError('imageMode', 'Please provide a valid image.');
+  }
+
   var validators = {
     required: function(rule, value) {
       if (isBlank(value)) return rule.message;
@@ -414,9 +453,10 @@
     return {
       fields: {
         menuItemId: optionRules({
+          required: 'Choose a menu item to spotlight.',
           type: 'Choose a valid menu item.',
           min: 'Choose a valid menu item.'
-        }, { min: 1 }),
+        }, { required: true, min: 1 }),
         headline: textRules({
           required: 'Headline is required.',
           minLength: 'Headline must be at least 2 characters.',
@@ -444,7 +484,7 @@
           }
         })
       },
-      custom: [validateImageField]
+      custom: [validateOptionalImageField]
     };
   }
 

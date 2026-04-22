@@ -634,7 +634,7 @@ async function buildMenuItemAuditState(row) {
 async function buildFeaturedAuditState(row) {
   const linkedItem = row && row.menu_item_id ? await getMenuItemById(row.menu_item_id) : null;
   const promotion = row && row.promotion_id ? await getPromotionById(row.promotion_id) : null;
-  const label = row.headline || (linkedItem && linkedItem.name) || 'Homepage highlight';
+  const label = row.headline || (linkedItem && linkedItem.name) || 'Menu spotlight';
 
   return {
     label,
@@ -1522,7 +1522,7 @@ async function createFeaturedItem(payload, actor) {
   await ensureDatabase();
   const sql = getSql();
 
-  const linkedItem = payload.menuItemId ? await assertMenuItemExists(normalizeInteger(payload.menuItemId, 'Linked menu item', { min: 1 })) : null;
+  const linkedItem = await assertMenuItemExists(normalizeInteger(payload.menuItemId, 'Linked menu item', { required: true, min: 1 }));
   const imageFields = resolveImageFields(payload);
   const promotionId = payload.promotionId === '' || payload.promotionId == null
     ? null
@@ -1545,8 +1545,8 @@ async function createFeaturedItem(payload, actor) {
       RETURNING *
     `,
     [
-      linkedItem ? linkedItem.id : null,
-      normalizeString(payload.headline || (linkedItem ? linkedItem.name : ''), 'Featured headline', { required: true, maxLength: 160 }),
+      linkedItem.id,
+      normalizeString(payload.headline || linkedItem.name, 'Featured headline', { required: true, maxLength: 160 }),
       normalizeString(payload.subtext, 'Featured subtext', { maxLength: 600 }) || null,
       imageFields.image_url,
       imageFields.image_data,
@@ -1565,7 +1565,7 @@ async function createFeaturedItem(payload, actor) {
     entityId: created.id,
     entityLabel: afterState.label,
     action: 'create',
-    summary: `Added homepage highlight "${afterState.label}".`,
+    summary: `Added menu spotlight item "${afterState.label}".`,
     changes: buildAuditChanges('featured', null, afterState),
     beforeData: null,
     afterData: afterState
@@ -1579,13 +1579,8 @@ async function updateFeaturedItem(payload, actor) {
   if (!current) throw createHttpError(404, 'Featured item not found.');
   const beforeState = await buildFeaturedAuditState(current);
 
-  const linkedItem = payload.menuItemId === ''
-    ? null
-    : payload.menuItemId !== undefined
-      ? await assertMenuItemExists(normalizeInteger(payload.menuItemId, 'Linked menu item', { min: 1 }))
-      : current.menu_item_id
-        ? await assertMenuItemExists(current.menu_item_id)
-        : null;
+  const linkedItemId = payload.menuItemId !== undefined ? payload.menuItemId : current.menu_item_id;
+  const linkedItem = await assertMenuItemExists(normalizeInteger(linkedItemId, 'Linked menu item', { required: true, min: 1 }));
 
   const imageFields = resolveImageFields(payload, current);
   const promotionId = payload.promotionId === ''
@@ -1599,9 +1594,9 @@ async function updateFeaturedItem(payload, actor) {
   }
 
   const updated = await updateRecord('featured_items', id, {
-    menu_item_id: payload.menuItemId !== undefined ? (linkedItem ? linkedItem.id : null) : undefined,
+    menu_item_id: payload.menuItemId !== undefined ? linkedItem.id : undefined,
     headline: payload.headline !== undefined
-      ? normalizeString(payload.headline || (linkedItem ? linkedItem.name : ''), 'Featured headline', { required: true, maxLength: 160 })
+      ? normalizeString(payload.headline || linkedItem.name, 'Featured headline', { required: true, maxLength: 160 })
       : undefined,
     subtext: payload.subtext !== undefined
       ? normalizeString(payload.subtext, 'Featured subtext', { maxLength: 600 }) || null
@@ -1626,7 +1621,7 @@ async function updateFeaturedItem(payload, actor) {
     entityId: id,
     entityLabel: afterState.label,
     action: 'update',
-    summary: `Updated homepage highlight "${afterState.label}".`,
+    summary: `Updated menu spotlight item "${afterState.label}".`,
     changes: buildAuditChanges('featured', beforeState, afterState),
     beforeData: beforeState,
     afterData: afterState
@@ -1649,7 +1644,7 @@ async function deleteFeaturedItem(payload, actor) {
     entityId: id,
     entityLabel: beforeState.label,
     action: 'delete',
-    summary: `Deleted homepage highlight "${beforeState.label}".`,
+    summary: `Deleted menu spotlight item "${beforeState.label}".`,
     changes: buildAuditChanges('featured', beforeState, null),
     beforeData: beforeState,
     afterData: null
@@ -1681,9 +1676,9 @@ async function reorderFeaturedItems(payload, actor) {
     actor,
     entityType: 'featured',
     entityId: null,
-    entityLabel: 'Homepage highlights',
+    entityLabel: 'Menu spotlight',
     action: 'reorder',
-    summary: 'Reordered homepage highlights.',
+    summary: 'Reordered menu spotlight items.',
     changes: [
       {
         field: 'displayOrder',
