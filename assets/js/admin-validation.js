@@ -18,12 +18,24 @@
     return value == null ? '' : String(value).trim();
   }
 
+  function arrayify(value) {
+    if (Array.isArray(value)) return value;
+    if (value === undefined || value === null) return [];
+    return [value];
+  }
+
   function sanitizeValues(values) {
     var sanitized = {};
 
     Object.keys(values || {}).forEach(function(fieldName) {
       var value = values[fieldName];
-      sanitized[fieldName] = typeof value === 'string' ? value.trim() : value;
+      if (Array.isArray(value)) {
+        sanitized[fieldName] = value.map(function(entry) {
+          return typeof entry === 'string' ? entry.trim() : entry;
+        });
+      } else {
+        sanitized[fieldName] = typeof value === 'string' ? value.trim() : value;
+      }
     });
 
     return sanitized;
@@ -341,9 +353,6 @@
   };
 
   function itemSchema(context) {
-    var category = context && context.category ? context.category : null;
-    var isMultiPrice = Boolean(category && category.allowMultiPrice);
-
     return {
       fields: {
         categoryId: optionRules({
@@ -364,33 +373,19 @@
         priceType: textRules({
           required: 'Price type is required.'
         }, { required: true }),
+        pricingMode: textRules({
+          required: 'Pricing mode is required.'
+        }, { required: true }),
         priceSingle: numberRules({
           required: 'Price is required.',
           type: 'Price must be a valid number.',
           min: 'Price cannot be negative.'
         }, {
-          required: !isMultiPrice,
+          required: true,
           min: 0,
           when: function(values) {
-            return normalizeText(values.priceType || 'numeric') === 'numeric' && !isMultiPrice;
-          }
-        }),
-        priceMedium: numberRules({
-          type: 'Medium price must be a valid number.',
-          min: 'Medium price cannot be negative.'
-        }, {
-          min: 0,
-          when: function(values) {
-            return normalizeText(values.priceType || 'numeric') === 'numeric' && isMultiPrice;
-          }
-        }),
-        priceLarge: numberRules({
-          type: 'Large price must be a valid number.',
-          min: 'Large price cannot be negative.'
-        }, {
-          min: 0,
-          when: function(values) {
-            return normalizeText(values.priceType || 'numeric') === 'numeric' && isMultiPrice;
+            return normalizeText(values.priceType || 'numeric') === 'numeric' &&
+              normalizeText(values.pricingMode || 'single') === 'single';
           }
         }),
         displayOrder: integerRules({
@@ -415,14 +410,52 @@
       custom: [
         function(values, ctx, api) {
           var type = normalizeText(values.priceType || 'numeric');
+          var pricingMode = normalizeText(values.pricingMode || 'single');
           if (type !== 'numeric' && type !== 'tbd' && type !== 'in_store') {
             api.addError('priceType', 'Choose a valid price type.');
           }
+          if (pricingMode !== 'single' && pricingMode !== 'sizes') {
+            api.addError('pricingMode', 'Choose a valid pricing mode.');
+          }
           if (type !== 'numeric') return;
-          if (!isMultiPrice) return;
-          if (!isBlank(values.priceMedium) || !isBlank(values.priceLarge)) return;
-          api.addError('priceMedium', 'Add at least one size price.');
-          api.addError('priceLarge', 'Add at least one size price.');
+          if (pricingMode !== 'sizes') return;
+
+          var labels = arrayify(values.sizeLabel);
+          var prices = arrayify(values.sizePrice);
+          var rowCount = Math.max(labels.length, prices.length);
+          var seenLabels = {};
+          var index;
+
+          if (!rowCount) {
+            api.addError('sizes', 'Add at least one size price.');
+            return;
+          }
+
+          for (index = 0; index < rowCount; index += 1) {
+            var label = normalizeText(labels[index]);
+            var price = normalizeText(prices[index]);
+            var labelKey = label.toLowerCase();
+
+            if (!label) {
+              api.addError('sizes', 'Every size needs a label.');
+            }
+            if (!price) {
+              api.addError('sizes', 'Every size needs a price.');
+            } else if (!isValidNumber(price)) {
+              api.addError('sizes', 'Size prices must be valid numbers.');
+            } else if (Number(price) < 0) {
+              api.addError('sizes', 'Size prices cannot be negative.');
+            }
+            if (label && label.length > 40) {
+              api.addError('sizes', 'Size labels must be 40 characters or fewer.');
+            }
+            if (labelKey) {
+              if (seenLabels[labelKey]) {
+                api.addError('sizes', 'Size labels must be unique.');
+              }
+              seenLabels[labelKey] = true;
+            }
+          }
         },
         validateImageField
       ]

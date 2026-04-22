@@ -6,6 +6,8 @@ const { ensureDatabase, getSql } = require('./db');
 const IMAGE_LIMIT_BASE64 = Math.floor(2.8 * 1024 * 1024);
 const CATEGORY_LAYOUTS = new Set(['card', 'table', 'list']);
 const DISCOUNT_TYPES = new Set(['text', 'percentage', 'fixed']);
+const PRICE_TYPES = new Set(['numeric', 'tbd', 'in_store']);
+const PRICING_MODES = new Set(['single', 'sizes']);
 const AUDIT_FETCH_LIMIT = 120;
 const AUDIT_FIELD_LABELS = {
   category: {
@@ -22,7 +24,9 @@ const AUDIT_FIELD_LABELS = {
     name: 'Item name',
     category: 'Menu section',
     description: 'Description',
+    pricingMode: 'Pricing mode',
     price: 'Price',
+    sizePrices: 'Size prices',
     mediumPrice: 'Medium price',
     largePrice: 'Large price',
     image: 'Image',
@@ -53,7 +57,7 @@ const AUDIT_FIELD_LABELS = {
 };
 const AUDIT_FIELD_ORDER = {
   category: ['name', 'slug', 'description', 'layout', 'pricing', 'priceLabels', 'imageRequirement', 'displayOrder'],
-  item: ['name', 'category', 'description', 'price', 'mediumPrice', 'largePrice', 'image', 'offer', 'availability', 'featured', 'displayOrder'],
+  item: ['name', 'category', 'description', 'pricingMode', 'price', 'sizePrices', 'mediumPrice', 'largePrice', 'image', 'offer', 'availability', 'featured', 'displayOrder'],
   featured: ['headline', 'linkedItem', 'subtext', 'image', 'offer', 'visibility', 'displayOrder'],
   promotion: ['title', 'badge', 'description', 'discountType', 'discountValue', 'schedule', 'visibility', 'displayOrder']
 };
@@ -179,6 +183,118 @@ function normalizePriceLabels(value) {
     .map(label => String(label || '').trim())
     .filter(Boolean)
     .slice(0, 2);
+}
+
+function createFieldValidationError(fieldName, message) {
+  return createHttpError(400, message, {
+    fields: {
+      [fieldName]: [message]
+    }
+  });
+}
+
+function normalizePriceType(value, fallback) {
+  const priceType = String(value || fallback || 'numeric').trim().toLowerCase();
+  if (!PRICE_TYPES.has(priceType)) {
+    throw createFieldValidationError('priceType', 'Choose a valid price type.');
+  }
+  return priceType;
+}
+
+function normalizePricingMode(value, fallback) {
+  const pricingMode = String(value || fallback || 'single').trim().toLowerCase();
+  if (!PRICING_MODES.has(pricingMode)) {
+    throw createFieldValidationError('pricingMode', 'Choose a valid pricing mode.');
+  }
+  return pricingMode;
+}
+
+function normalizeStoredSizePrices(value) {
+  return parseJsonArray(value)
+    .map(size => {
+      const label = size && size.label != null ? String(size.label).trim() : '';
+      const price = size && size.price != null ? Number(size.price) : null;
+      if (!label || !Number.isFinite(price) || price < 0) return null;
+      return {
+        label,
+        price: roundCurrency(price)
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeSubmittedSizePrices(value) {
+  if (!Array.isArray(value)) return [];
+
+  const seenLabels = new Set();
+  const sizes = [];
+
+  value.forEach((entry) => {
+    const label = normalizeString(entry && entry.label, 'Size label', { required: true, maxLength: 40 });
+    const price = normalizePrice(entry && entry.price, 'Size price', { required: true });
+    const labelKey = label.toLowerCase();
+
+    if (seenLabels.has(labelKey)) {
+      throw createFieldValidationError('sizes', 'Size labels must be unique.');
+    }
+
+    seenLabels.add(labelKey);
+    sizes.push({ label, price });
+  });
+
+  return sizes;
+}
+
+function getLegacySizePrices(row, category) {
+  if (!row) return [];
+
+  const labels = (category && category.priceLabels) || parseJsonArray(row.price_labels);
+  const firstLabel = labels[0] || 'M';
+  const secondLabel = labels[1] || 'L';
+  const sizes = [];
+
+  if (row.price_medium != null) {
+    sizes.push({ label: firstLabel, price: roundCurrency(row.price_medium) });
+  }
+  if (row.price_large != null) {
+    sizes.push({ label: secondLabel, price: roundCurrency(row.price_large) });
+  }
+
+  return sizes;
+}
+
+function resolveItemSizePrices(row, category) {
+  const storedSizes = normalizeStoredSizePrices(row && row.sizes);
+  if (storedSizes.length) return storedSizes;
+  return getLegacySizePrices(row, category);
+}
+
+function resolveItemPricingMode(row, category, sizes) {
+  const storedMode = row && row.pricing_mode ? normalizePricingMode(row.pricing_mode, 'single') : null;
+  const hasLegacySizePrices = Boolean(row && (row.price_medium != null || row.price_large != null));
+  const legacyMultiPrice = Boolean(category && category.allowMultiPrice && hasLegacySizePrices);
+
+  if (storedMode === 'sizes') return 'sizes';
+  if (storedMode === 'single' && legacyMultiPrice && row.price_single == null) return 'sizes';
+  if (!storedMode && sizes && sizes.length) return 'sizes';
+
+  return storedMode || 'single';
+}
+
+function sizePricesToLegacyColumns(sizes) {
+  const rows = Array.isArray(sizes) ? sizes : [];
+  return {
+    price_medium: rows[0] ? rows[0].price : null,
+    price_large: rows[1] ? rows[1].price : null
+  };
+}
+
+function formatSizePricesForAudit(value, row) {
+  const sizes = normalizeStoredSizePrices(value);
+  const fallbackSizes = sizes.length ? sizes : getLegacySizePrices(row);
+
+  if (!fallbackSizes.length) return '—';
+  return fallbackSizes.map(size => `${size.label} ${formatMoney(size.price)}`).join(' / ');
 }
 
 function normalizeLayout(value) {
@@ -384,16 +500,12 @@ function buildPriceSummary(item, category, promotion) {
   if (item.priceType === 'tbd') return 'TBD';
   if (item.priceType === 'in_store') return 'See in store';
 
-  const labels = (category && category.priceLabels) || [];
-  const firstLabel = labels[0] || 'M';
-  const secondLabel = labels[1] || 'L';
-
-  if (category && category.allowMultiPrice) {
-    const parts = [];
-    const mediumValue = item.effectivePriceMedium != null ? item.effectivePriceMedium : item.priceMedium;
-    const largeValue = item.effectivePriceLarge != null ? item.effectivePriceLarge : item.priceLarge;
-    if (mediumValue != null) parts.push(`${firstLabel} ${formatMoney(mediumValue)}`);
-    if (largeValue != null) parts.push(`${secondLabel} ${formatMoney(largeValue)}`);
+  if (item.pricingMode === 'sizes' || (item.sizes && item.sizes.length)) {
+    const sourceSizes = item.effectiveSizes && item.effectiveSizes.length ? item.effectiveSizes : item.sizes;
+    const parts = (sourceSizes || []).map(size => {
+      if (!size || size.price == null) return null;
+      return `${size.label} ${formatMoney(size.price)}`;
+    }).filter(Boolean);
     return parts.length ? parts.join(' / ') : '';
   }
 
@@ -419,18 +531,14 @@ function mapMenuItemRow(row, categoriesById) {
       })
     : null;
 
-  const priceSingle = row.price_single != null
-    ? Number(row.price_single)
-    : row.price_medium != null
-      ? Number(row.price_medium)
-      : row.price_large != null
-        ? Number(row.price_large)
-        : null;
-  const priceMedium = row.price_medium != null
-    ? Number(row.price_medium)
-    : row.price_single != null && category && category.allowMultiPrice
-      ? Number(row.price_single)
-      : null;
+  const sizes = resolveItemSizePrices(row, category);
+  const effectiveSizes = sizes.map(size => ({
+    label: size.label,
+    price: applyPromotion(size.price, promotion)
+  }));
+  const pricingMode = resolveItemPricingMode(row, category, sizes);
+  const priceSingle = row.price_single != null ? Number(row.price_single) : null;
+  const priceMedium = row.price_medium != null ? Number(row.price_medium) : null;
   const priceLarge = row.price_large != null ? Number(row.price_large) : null;
 
   const item = {
@@ -440,12 +548,15 @@ function mapMenuItemRow(row, categoriesById) {
     name: row.name,
     description: row.description || '',
     priceType: row.price_type || 'numeric',
+    pricingMode,
     priceSingle,
     priceMedium,
     priceLarge,
+    sizes,
     effectivePriceSingle: applyPromotion(priceSingle, promotion),
     effectivePriceMedium: applyPromotion(priceMedium, promotion),
     effectivePriceLarge: applyPromotion(priceLarge, promotion),
+    effectiveSizes,
     imageUrl: imageFromFields(row, { type: 'menu-item', id: row.id, version: row.updated_at }),
     isFeatured: Boolean(row.is_featured),
     isAvailable: Boolean(row.is_available),
@@ -495,6 +606,21 @@ function mapFeaturedItemRow(row) {
     allowMultiPrice: Boolean(row.menu_item_allow_multi_price),
     priceLabels: parseJsonArray(row.menu_item_price_labels)
   };
+  const linkedSizePrices = resolveItemSizePrices({
+    sizes: row.menu_item_sizes,
+    price_medium: row.menu_item_price_medium,
+    price_large: row.menu_item_price_large
+  }, linkedCategory);
+  const linkedEffectiveSizes = linkedSizePrices.map(size => ({
+    label: size.label,
+    price: applyPromotion(size.price, linkedPromotion)
+  }));
+  const linkedPricingMode = resolveItemPricingMode({
+    pricing_mode: row.menu_item_pricing_mode,
+    price_single: row.menu_item_price_single,
+    price_medium: row.menu_item_price_medium,
+    price_large: row.menu_item_price_large
+  }, linkedCategory, linkedSizePrices);
 
   const linkedItem = row.menu_item_id
     ? {
@@ -502,9 +628,12 @@ function mapFeaturedItemRow(row) {
         name: row.menu_item_name,
         description: row.menu_item_description || '',
         priceType: row.menu_item_price_type || 'numeric',
+        pricingMode: linkedPricingMode,
         priceSingle: row.menu_item_price_single != null ? Number(row.menu_item_price_single) : null,
         priceMedium: row.menu_item_price_medium != null ? Number(row.menu_item_price_medium) : null,
         priceLarge: row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
+        sizes: linkedSizePrices,
+        effectiveSizes: linkedEffectiveSizes,
         imageUrl: imageFromFields({
           image_url: row.menu_item_image_url,
           has_image_data: row.menu_item_has_image_data,
@@ -516,9 +645,11 @@ function mapFeaturedItemRow(row) {
         priceSummary: buildPriceSummary(
           {
             priceType: row.menu_item_price_type || 'numeric',
+            pricingMode: linkedPricingMode,
             priceSingle: row.menu_item_price_single != null ? Number(row.menu_item_price_single) : null,
             priceMedium: row.menu_item_price_medium != null ? Number(row.menu_item_price_medium) : null,
             priceLarge: row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
+            sizes: linkedSizePrices,
             effectivePriceSingle: applyPromotion(
               row.menu_item_price_single != null ? Number(row.menu_item_price_single) : null,
               linkedPromotion
@@ -530,7 +661,8 @@ function mapFeaturedItemRow(row) {
             effectivePriceLarge: applyPromotion(
               row.menu_item_price_large != null ? Number(row.menu_item_price_large) : null,
               linkedPromotion
-            )
+            ),
+            effectiveSizes: linkedEffectiveSizes
           },
           linkedCategory,
           linkedPromotion
@@ -620,7 +752,9 @@ async function buildMenuItemAuditState(row) {
     name: label,
     category: row.category_name || row.category_slug || 'No section',
     description: row.description || '—',
+    pricingMode: row.pricing_mode === 'sizes' || normalizeStoredSizePrices(row.sizes).length ? 'Size prices' : 'Single price',
     price: row.price_single != null ? formatMoney(row.price_single) : '—',
+    sizePrices: formatSizePricesForAudit(row.sizes, row),
     mediumPrice: row.price_medium != null ? formatMoney(row.price_medium) : '—',
     largePrice: row.price_large != null ? formatMoney(row.price_large) : '—',
     image: describeImageForAudit(row.image_url, row.image_data),
@@ -929,9 +1063,11 @@ async function fetchMenuItems(categories) {
       i.name,
       i.description,
       i.price_type,
+      i.pricing_mode,
       i.price_single::float AS price_single,
       i.price_medium::float AS price_medium,
       i.price_large::float AS price_large,
+      i.sizes,
       CASE
         WHEN LOWER(COALESCE(i.image_url, '')) LIKE 'data:image/%;base64,%' THEN NULL
         WHEN LENGTH(TRIM(COALESCE(i.image_url, ''))) > 2048 THEN NULL
@@ -1017,9 +1153,11 @@ async function fetchFeaturedItems() {
       mi.name AS menu_item_name,
       mi.description AS menu_item_description,
       mi.price_type AS menu_item_price_type,
+      mi.pricing_mode AS menu_item_pricing_mode,
       mi.price_single::float AS menu_item_price_single,
       mi.price_medium::float AS menu_item_price_medium,
       mi.price_large::float AS menu_item_price_large,
+      mi.sizes AS menu_item_sizes,
       CASE
         WHEN LOWER(COALESCE(mi.image_url, '')) LIKE 'data:image/%;base64,%' THEN NULL
         WHEN LENGTH(TRIM(COALESCE(mi.image_url, ''))) > 2048 THEN NULL
@@ -1119,37 +1257,37 @@ async function getAdminSnapshot() {
   };
 }
 
-function validateCategoryPrices(category, payload, existingItem) {
+function validateItemPrices(category, payload, existingItem) {
   const existing = existingItem || {};
+  const existingSizes = resolveItemSizePrices(existing, category);
+  const legacyPricingMode = existingSizes.length && existing.price_single == null ? 'sizes' : 'single';
 
   const priceType = payload.priceType !== undefined
-    ? normalizeString(payload.priceType, 'Price type', { maxLength: 20 }) || 'numeric'
-    : existing.price_type || 'numeric';
+    ? normalizePriceType(payload.priceType, 'numeric')
+    : normalizePriceType(existing.price_type, 'numeric');
+
+  const pricingMode = payload.pricingMode !== undefined
+    ? normalizePricingMode(payload.pricingMode, 'single')
+    : resolveItemPricingMode(existing, category, existingSizes.length ? existingSizes : getLegacySizePrices(existing, category)) || legacyPricingMode;
 
   const priceSingle = payload.priceSingle !== undefined
     ? normalizePrice(payload.priceSingle, 'Price', { required: false })
     : existing.price_single != null
       ? Number(existing.price_single)
-      : existing.price_medium != null && !category.allowMultiPrice
-        ? Number(existing.price_medium)
-        : null;
-  const priceMedium = payload.priceMedium !== undefined
-    ? normalizePrice(payload.priceMedium, 'Medium price', { required: false })
-    : existing.price_medium != null
-      ? Number(existing.price_medium)
-      : category.allowMultiPrice && existing.price_single != null
-        ? Number(existing.price_single)
-        : null;
-  const priceLarge = payload.priceLarge !== undefined
-    ? normalizePrice(payload.priceLarge, 'Large price', { required: false })
-    : existing.price_large != null
-      ? Number(existing.price_large)
       : null;
+  const sizes = pricingMode === 'sizes' && priceType === 'numeric'
+    ? payload.sizes !== undefined
+      ? normalizeSubmittedSizePrices(payload.sizes)
+      : existingSizes
+    : pricingMode === 'sizes'
+      ? existingSizes
+      : [];
+  const legacyColumns = sizePricesToLegacyColumns(sizes);
 
   if (priceType === 'numeric') {
-    if (category.allowMultiPrice) {
-      if (priceMedium == null && priceLarge == null) {
-        throw createHttpError(400, 'At least one category price is required.');
+    if (pricingMode === 'sizes') {
+      if (!sizes.length) {
+        throw createFieldValidationError('sizes', 'Add at least one size price.');
       }
     } else if (priceSingle == null) {
       throw createHttpError(400, 'Price is required.');
@@ -1158,9 +1296,11 @@ function validateCategoryPrices(category, payload, existingItem) {
 
   return {
     price_type: priceType,
-    price_single: category.allowMultiPrice ? null : priceSingle,
-    price_medium: category.allowMultiPrice ? priceMedium : null,
-    price_large: category.allowMultiPrice ? priceLarge : null
+    pricing_mode: pricingMode,
+    price_single: pricingMode === 'single' ? priceSingle : null,
+    price_medium: pricingMode === 'sizes' ? legacyColumns.price_medium : null,
+    price_large: pricingMode === 'sizes' ? legacyColumns.price_large : null,
+    sizes_json: pricingMode === 'sizes' ? JSON.stringify(sizes) : '[]'
   };
 }
 
@@ -1322,7 +1462,7 @@ async function createMenuItem(payload, actor) {
   if (!categoryRow) throw createHttpError(404, 'Category not found.');
   const category = mapCategoryRow(categoryRow);
 
-  const prices = validateCategoryPrices(category, payload);
+  const prices = validateItemPrices(category, payload);
   const imageFields = resolveImageFields(payload);
   if (category.requireImage && !hasImageFields(imageFields)) {
     throw createHttpError(400, 'This category requires an image.');
@@ -1344,9 +1484,10 @@ async function createMenuItem(payload, actor) {
     `
       INSERT INTO menu_items (
         category_id, name, description, price_single, price_medium, price_large,
-        image_url, image_data, image_mime, is_featured, is_available, display_order, promotion_id, price_type
+        image_url, image_data, image_mime, is_featured, is_available, display_order, promotion_id, price_type,
+        pricing_mode, sizes
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb)
       RETURNING *
     `,
     [
@@ -1363,7 +1504,9 @@ async function createMenuItem(payload, actor) {
       normalizeBoolean(payload.isAvailable, true),
       displayOrder,
       promotionId,
-      prices.price_type
+      prices.price_type,
+      prices.pricing_mode,
+      prices.sizes_json
     ]
   );
 
@@ -1397,7 +1540,7 @@ async function updateMenuItem(payload, actor) {
   if (!categoryRow) throw createHttpError(404, 'Category not found.');
   const category = mapCategoryRow(categoryRow);
 
-  const prices = validateCategoryPrices(category, payload, current);
+  const prices = validateItemPrices(category, payload, current);
   const imageFields = resolveImageFields(payload, current);
   if (category.requireImage && !hasImageFields(imageFields)) {
     throw createHttpError(400, 'This category requires an image.');
@@ -1431,6 +1574,8 @@ async function updateMenuItem(payload, actor) {
     price_medium: prices.price_medium,
     price_large: prices.price_large,
     price_type: prices.price_type,
+    pricing_mode: prices.pricing_mode,
+    sizes: prices.sizes_json,
     image_url: imageFields.image_url,
     image_data: imageFields.image_data,
     image_mime: imageFields.image_mime,

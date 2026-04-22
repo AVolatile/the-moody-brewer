@@ -1610,6 +1610,11 @@ img.rounded-circle {
   color: rgba(43,26,30,.42);
   font-size: .92rem;
 }
+.menu-size-price-list {
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+}
 
 .menu-table-shell {
   overflow-x: auto;
@@ -1631,6 +1636,10 @@ img.rounded-circle {
   border-top: 1px solid rgba(43,26,30,.08);
   vertical-align: top;
 }
+.menu-price-column,
+.menu-table-price-cell {
+  width: 210px;
+}
 .menu-table-title {
   font-weight: 700;
   color: #2b1a1e;
@@ -1647,10 +1656,11 @@ img.rounded-circle {
   margin-top: 10px;
 }
 .menu-price-line {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
   gap: 8px;
   white-space: nowrap;
+  min-width: 0;
 }
 .menu-price-label {
   font-size: .75rem;
@@ -1681,6 +1691,9 @@ img.rounded-circle {
 .menu-list-card__price {
   min-width: 110px;
   text-align: right;
+}
+.menu-list-card__price .menu-size-price-list {
+  justify-items: end;
 }
 
 .empty-block {
@@ -1771,6 +1784,9 @@ img.rounded-circle {
   }
   .menu-list-card__price {
     text-align: left;
+  }
+  .menu-list-card__price .menu-size-price-list {
+    justify-items: start;
   }
   .empty-block--spotlight {
     min-height: 160px;

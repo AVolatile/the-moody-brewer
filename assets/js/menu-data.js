@@ -94,12 +94,17 @@
     rawItems.forEach(function(rawItem, index) {
       var categoryName = rawItem && rawItem.category ? String(rawItem.category).trim() : 'Menu Favorites';
       var price = rawItem && rawItem.price != null ? Number(rawItem.price) : null;
+      var sizes = normalizeSizePrices(rawItem && rawItem.sizes);
+      var pricingMode = rawItem && rawItem.pricingMode ? String(rawItem.pricingMode).trim() : (sizes.length ? 'sizes' : 'single');
       var item = {
         name: rawItem && rawItem.name ? String(rawItem.name).trim() : 'Featured Item',
         description: rawItem && rawItem.description ? String(rawItem.description).trim() : '',
         priceType: rawItem && rawItem.priceType ? String(rawItem.priceType).trim() : 'numeric',
+        pricingMode: pricingMode === 'sizes' ? 'sizes' : 'single',
         priceSingle: Number.isFinite(price) ? price : null,
         effectivePriceSingle: Number.isFinite(price) ? price : null,
+        sizes: sizes,
+        effectiveSizes: sizes,
         imageUrl: rawItem && rawItem.imageUrl ? String(rawItem.imageUrl).trim() : '',
         isAvailable: true,
         isFeatured: index < 3,
@@ -131,7 +136,7 @@
             description: item.description,
             imageUrl: item.imageUrl,
             isAvailable: true,
-            priceSummary: item.priceSingle != null ? formatMoney(item.priceSingle) : ''
+            priceSummary: buildPriceSummaryText(item, categoryMap[categoryName])
           }
         });
       }
@@ -158,6 +163,69 @@
     return parts.join('');
   }
 
+  function normalizeSizePrices(rawSizes) {
+    if (!Array.isArray(rawSizes)) return [];
+    return rawSizes.map(function(size) {
+      var label = size && size.label != null ? String(size.label).trim() : '';
+      var price = size && size.price != null ? Number(size.price) : null;
+      if (!label || !Number.isFinite(price) || price < 0) return null;
+      return { label: label, price: price };
+    }).filter(Boolean);
+  }
+
+  function getItemSizePrices(item, category) {
+    var sizes = item && Array.isArray(item.sizes) ? normalizeSizePrices(item.sizes) : [];
+    var labels = category && category.priceLabels ? category.priceLabels : [];
+
+    if (sizes.length) return sizes;
+
+    sizes = [];
+    if (item && item.priceMedium != null) {
+      sizes.push({
+        label: labels[0] || 'M',
+        price: item.priceMedium
+      });
+    }
+    if (item && item.priceLarge != null) {
+      sizes.push({
+        label: labels[1] || 'L',
+        price: item.priceLarge
+      });
+    }
+    return sizes;
+  }
+
+  function getEffectiveSizePrices(item, category) {
+    var originalSizes = getItemSizePrices(item, category);
+    var effectiveSizes = item && Array.isArray(item.effectiveSizes) ? normalizeSizePrices(item.effectiveSizes) : [];
+
+    return originalSizes.map(function(size, index) {
+      var effective = effectiveSizes[index] && effectiveSizes[index].label === size.label
+        ? effectiveSizes[index]
+        : null;
+
+      return {
+        label: size.label,
+        price: effective && effective.price != null ? effective.price : size.price,
+        originalPrice: size.price
+      };
+    });
+  }
+
+  function buildPriceSummaryText(item, category) {
+    if (!item) return '';
+    if (item.priceType === 'tbd') return 'TBD';
+    if (item.priceType === 'in_store') return 'See in store';
+
+    if (item.pricingMode === 'sizes' || getItemSizePrices(item, category).length) {
+      return getEffectiveSizePrices(item, category).map(function(size) {
+        return size.label + ' ' + formatMoney(size.price);
+      }).filter(Boolean).join(' / ');
+    }
+
+    return item.priceSingle != null ? formatMoney(item.priceSingle) : '';
+  }
+
   function buildSinglePriceMarkup(item) {
     var priceType = item.priceType || 'numeric';
     if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
@@ -180,30 +248,33 @@
     ].join('');
   }
 
-  function buildMultiPriceMarkup(item, category) {
+  function buildSizePriceMarkup(item, category) {
     var priceType = item.priceType || 'numeric';
     if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
     if (priceType === 'in_store') return '<span class="price-current">See in store</span>';
 
-    var labels = category.priceLabels || [];
-    var firstLabel = labels[0] || 'M';
-    var secondLabel = labels[1] || 'L';
+    var sizes = getEffectiveSizePrices(item, category);
 
-    function line(label, value, original) {
-      if (value == null) return '';
+    function line(size) {
+      if (!size || size.price == null) return '';
       return [
         '<div class="menu-price-line">',
-          '<span class="menu-price-label">' + escapeHtml(label) + '</span>',
-          '<span class="menu-price-value">' + escapeHtml(formatMoney(value)) + '</span>',
-          (original != null && value !== original ? '<span class="menu-price-original">' + escapeHtml(formatMoney(original)) + '</span>' : ''),
+          '<span class="menu-price-label">' + escapeHtml(size.label) + '</span>',
+          '<span class="menu-price-value">' + escapeHtml(formatMoney(size.price)) + '</span>',
+          (size.originalPrice != null && size.price !== size.originalPrice ? '<span class="menu-price-original">' + escapeHtml(formatMoney(size.originalPrice)) + '</span>' : ''),
         '</div>'
       ].join('');
     }
 
-    return [
-      line(firstLabel, item.effectivePriceMedium != null ? item.effectivePriceMedium : item.priceMedium, item.priceMedium),
-      line(secondLabel, item.effectivePriceLarge != null ? item.effectivePriceLarge : item.priceLarge, item.priceLarge)
-    ].join('');
+    if (!sizes.length) return '<span class="price-current">Market</span>';
+    return '<div class="menu-size-price-list">' + sizes.map(line).join('') + '</div>';
+  }
+
+  function buildPriceMarkup(item, category) {
+    if (item && (item.pricingMode === 'sizes' || getItemSizePrices(item, category).length)) {
+      return buildSizePriceMarkup(item, category);
+    }
+    return buildSinglePriceMarkup(item);
   }
 
   function renderPromotions(container, promotions) {
@@ -301,7 +372,7 @@
                   '<div class="menu-card__badges">' + getBadgeMarkup(item) + '</div>',
                   '<h3>' + escapeHtml(item.name) + '</h3>',
                   (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
-                  buildSinglePriceMarkup(item),
+                  buildPriceMarkup(item, category),
                 '</div>',
               '</article>'
             ].join('');
@@ -313,9 +384,6 @@
 
   function renderTableCategory(category) {
     var items = category.items || [];
-    var labels = category.priceLabels || [];
-    var firstLabel = labels[0] || 'M';
-    var secondLabel = labels[1] || 'L';
 
     return [
       '<section class="menu-catalog-section">',
@@ -331,8 +399,7 @@
             '<thead>',
               '<tr>',
                 '<th>Item</th>',
-                '<th>' + escapeHtml(firstLabel) + '</th>',
-                '<th>' + escapeHtml(secondLabel) + '</th>',
+                '<th class="menu-price-column">Prices</th>',
               '</tr>',
             '</thead>',
             '<tbody>',
@@ -344,17 +411,10 @@
                       (item.description ? '<div class="menu-table-desc">' + escapeHtml(item.description) + '</div>' : ''),
                       (getBadgeMarkup(item) ? '<div class="menu-table-badges">' + getBadgeMarkup(item) + '</div>' : ''),
                     '</td>',
-                    '<td>' + buildMultiPriceMarkup({
-                      priceMedium: item.priceMedium,
-                      effectivePriceMedium: item.effectivePriceMedium
-                    }, { priceLabels: [firstLabel] }) + '</td>',
-                    '<td>' + buildMultiPriceMarkup({
-                      priceLarge: item.priceLarge,
-                      effectivePriceLarge: item.effectivePriceLarge
-                    }, { priceLabels: ['', secondLabel] }) + '</td>',
+                    '<td class="menu-table-price-cell">' + buildPriceMarkup(item, category) + '</td>',
                   '</tr>'
                 ].join('');
-              }).join('') : '<tr><td colspan="3"><div class="empty-block compact">More favorites coming soon.</div></td></tr>'),
+              }).join('') : '<tr><td colspan="2"><div class="empty-block compact">More favorites coming soon.</div></td></tr>'),
             '</tbody>',
           '</table>',
         '</div>',
@@ -383,7 +443,7 @@
                   (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
                 '</div>',
                 '<div class="menu-list-card__price">',
-                  buildSinglePriceMarkup(item),
+                  buildPriceMarkup(item, category),
                 '</div>',
               '</article>'
             ].join('');

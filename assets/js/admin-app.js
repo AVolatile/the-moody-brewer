@@ -135,6 +135,16 @@
     return '$' + number.toFixed(2);
   }
 
+  function formNumberValue(value) {
+    return value === 0 || value ? value : '';
+  }
+
+  function arrayify(value) {
+    if (Array.isArray(value)) return value;
+    if (value === undefined || value === null) return [];
+    return [value];
+  }
+
   function getImagePlaceholderConfig(value) {
     var normalized = String(value == null ? '' : value).trim().toLowerCase();
 
@@ -537,17 +547,41 @@
     }) || null;
   }
 
+  function getItemSizePrices(item, category) {
+    var sizes = item && Array.isArray(item.sizes) ? item.sizes.filter(function(size) {
+      return size && size.label && size.price != null;
+    }) : [];
+
+    if (sizes.length) return sizes;
+
+    sizes = [];
+    if (item && item.priceMedium != null) {
+      sizes.push({
+        label: category && category.priceLabels && category.priceLabels[0] ? category.priceLabels[0] : 'M',
+        price: item.priceMedium
+      });
+    }
+    if (item && item.priceLarge != null) {
+      sizes.push({
+        label: category && category.priceLabels && category.priceLabels[1] ? category.priceLabels[1] : 'L',
+        price: item.priceLarge
+      });
+    }
+    return sizes;
+  }
+
   function priceSummary(item, category) {
     if (!item) return '—';
     if (item.priceType === 'tbd') return 'TBD';
     if (item.priceType === 'in_store') return 'See in store';
-    if (category && category.allowMultiPrice) {
-      var labels = category.priceLabels || [];
-      var parts = [];
-      if (item.priceMedium != null) parts.push((labels[0] || 'M') + ' ' + formatMoney(item.priceMedium));
-      if (item.priceLarge != null) parts.push((labels[1] || 'L') + ' ' + formatMoney(item.priceLarge));
+
+    if (item.pricingMode === 'sizes' || getItemSizePrices(item, category).length) {
+      var parts = getItemSizePrices(item, category).map(function(size) {
+        return size.label + ' ' + formatMoney(size.price);
+      });
       return parts.length ? parts.join(' / ') : '—';
     }
+
     return item.priceSingle != null ? formatMoney(item.priceSingle) : '—';
   }
 
@@ -1545,14 +1579,17 @@
           '<input class="form-control" id="categoryPriceLabelTwo" name="priceLabelTwo" type="text" value="' + escapeHtml(labels[1] || '') + '" placeholder="L">',
         '</div>',
       '</div>',
-      toggleMarkup('Show multiple sizes', 'Use separate prices such as medium and large.', 'allowMultiPrice', record.allowMultiPrice),
+      toggleMarkup('Default to size pricing', 'Uses these labels as the starting size rows for new items in this section.', 'allowMultiPrice', record.allowMultiPrice),
       toggleMarkup('Use photos in this section', 'Helpful for sections where visuals matter most.', 'requireImage', record.requireImage)
     ].join('');
   }
 
   function itemFormMarkup(record) {
     record = record || {};
-    var categoryId = record.categoryId || (state.snapshot.categories[0] ? state.snapshot.categories[0].id : '');
+    var filteredCategoryId = state.itemCategoryFilter !== 'all' && getCategoryById(state.itemCategoryFilter)
+      ? state.itemCategoryFilter
+      : '';
+    var categoryId = record.categoryId || filteredCategoryId || (state.snapshot.categories[0] ? state.snapshot.categories[0].id : '');
     var category = getCategoryById(categoryId);
     return [
       '<div class="item-flow">',
@@ -1749,10 +1786,66 @@
     return '<option value="' + escapeHtml(value) + '"' + (selected ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
   }
 
+  function defaultSizeRowsForCategory(category) {
+    var labels = category && category.priceLabels && category.priceLabels.length
+      ? category.priceLabels
+      : ['Small', 'Medium', 'Large'];
+
+    return labels.map(function(label) {
+      return { label: label, price: '' };
+    });
+  }
+
+  function getItemSizeRows(record, category) {
+    var rows = getItemSizePrices(record || {}, category).map(function(size) {
+      return {
+        label: size.label || '',
+        price: size.price != null ? size.price : ''
+      };
+    });
+
+    if (rows.length) return rows;
+    return defaultSizeRowsForCategory(category);
+  }
+
+  function inferPricingMode(record, category) {
+    if (record && record.pricingMode) return record.pricingMode;
+    if (record && getItemSizePrices(record, category).length) return 'sizes';
+    if (category && category.allowMultiPrice) return 'sizes';
+    return 'single';
+  }
+
+  function sizePriceRowMarkup(row, index, canRemove) {
+    row = row || {};
+    return [
+      '<div class="size-price-row" data-size-price-row>',
+        '<div class="form-group">',
+          '<label class="form-label" for="itemSizeLabel', index, '">Size label</label>',
+          '<input class="form-control" id="itemSizeLabel', index, '" name="sizeLabel" type="text" value="', escapeHtml(row.label || ''), '" placeholder="Small">',
+        '</div>',
+        '<div class="form-group">',
+          '<label class="form-label" for="itemSizePrice', index, '">Price</label>',
+          '<div class="size-price-row__price">',
+            '<input class="form-control" id="itemSizePrice', index, '" name="sizePrice" type="number" min="0" step="0.01" value="', escapeHtml(formNumberValue(row.price)), '" placeholder="0.00">',
+            '<button class="btn-icon danger size-price-remove" type="button" data-action="remove-size-price" aria-label="Remove size price" title="Remove size"', canRemove ? '' : ' disabled', '><i class="fa fa-trash"></i></button>',
+          '</div>',
+        '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function renderSizePriceRows(rows) {
+    var normalizedRows = rows && rows.length ? rows : [{ label: '', price: '' }];
+    return normalizedRows.map(function(row, index) {
+      return sizePriceRowMarkup(row, index, normalizedRows.length > 1);
+    }).join('');
+  }
+
   function itemPriceFieldsMarkup(record, categoryId) {
     var category = getCategoryById(categoryId);
-    var labels = category ? category.priceLabels || [] : [];
     var priceType = record.priceType || 'numeric';
+    var pricingMode = inferPricingMode(record, category);
+    var sizeRows = getItemSizeRows(record, category);
     return [
       '<div class="price-row">',
         '<div class="form-group">',
@@ -1763,21 +1856,30 @@
             option('in_store', 'See in store', priceType === 'in_store'),
           '</select>',
         '</div>',
-      '</div>',
-      '<div class="price-row', category && category.allowMultiPrice ? ' field-hidden' : '', '" id="singlePriceRow">',
         '<div class="form-group">',
-          '<label class="form-label" for="itemPriceSingle">', escapeHtml(labels[0] || 'Price'), '</label>',
-          '<input class="form-control" id="itemPriceSingle" name="priceSingle" type="number" min="0" step="0.01" value="', escapeHtml(record.priceSingle || ''), '">',
+          '<label class="form-label" for="itemPricingMode">Pricing mode</label>',
+          '<select class="form-control" id="itemPricingMode" name="pricingMode">',
+            option('single', 'Single price', pricingMode !== 'sizes'),
+            option('sizes', 'Size prices', pricingMode === 'sizes'),
+          '</select>',
         '</div>',
       '</div>',
-      '<div class="price-row', category && category.allowMultiPrice ? '' : ' field-hidden', '" id="multiPriceRow">',
+      '<div class="price-row', pricingMode === 'sizes' ? ' field-hidden' : '', '" id="singlePriceRow">',
         '<div class="form-group">',
-          '<label class="form-label" for="itemPriceMedium">', escapeHtml(labels[0] || 'M'), '</label>',
-          '<input class="form-control" id="itemPriceMedium" name="priceMedium" type="number" min="0" step="0.01" value="', escapeHtml(record.priceMedium || ''), '">',
+          '<label class="form-label" for="itemPriceSingle">Price</label>',
+          '<input class="form-control" id="itemPriceSingle" name="priceSingle" type="number" min="0" step="0.01" value="', escapeHtml(formNumberValue(record.priceSingle)), '">',
         '</div>',
-        '<div class="form-group">',
-          '<label class="form-label" for="itemPriceLarge">', escapeHtml(labels[1] || 'L'), '</label>',
-          '<input class="form-control" id="itemPriceLarge" name="priceLarge" type="number" min="0" step="0.01" value="', escapeHtml(record.priceLarge || ''), '">',
+      '</div>',
+      '<div class="size-price-manager', pricingMode === 'sizes' ? '' : ' field-hidden', '" id="sizePriceGroup" data-size-price-group>',
+        '<div class="size-price-manager__head">',
+          '<div>',
+            '<span class="form-label">Size prices</span>',
+            '<p class="form-hint">Use the guest-facing drink sizes and the price for each one.</p>',
+          '</div>',
+          '<button class="btn-topbar outline small-btn" type="button" data-action="add-size-price"><i class="fa fa-plus"></i><span>Add size</span></button>',
+        '</div>',
+        '<div class="size-price-list" id="sizePriceRows" data-size-price-list>',
+          renderSizePriceRows(sizeRows),
         '</div>',
       '</div>'
     ].join('');
@@ -1866,8 +1968,12 @@
 
     if (entity === 'item') {
       var priceTypeField = document.getElementById('itemPriceType');
+      var pricingModeField = document.getElementById('itemPricingMode');
       if (priceTypeField) {
         priceTypeField.addEventListener('change', refreshItemPriceFields);
+      }
+      if (pricingModeField) {
+        pricingModeField.addEventListener('change', refreshItemPriceFields);
       }
       syncItemComposerUI();
     }
@@ -1891,26 +1997,58 @@
   function refreshItemPriceFields() {
     var categoryField = document.getElementById('itemCategory');
     var priceTypeField = document.getElementById('itemPriceType');
+    var pricingModeField = document.getElementById('itemPricingMode');
     if (!categoryField) return;
 
     var categoryId = categoryField.value;
     var category = getCategoryById(categoryId);
     var singleRow = document.getElementById('singlePriceRow');
-    var multiRow = document.getElementById('multiPriceRow');
-    if (!category || !singleRow || !multiRow) return;
-
-    var singleLabel = singleRow.querySelector('label');
-    var mediumLabel = multiRow.querySelectorAll('label')[0];
-    var largeLabel = multiRow.querySelectorAll('label')[1];
-
-    singleLabel.textContent = (category.priceLabels && category.priceLabels[0]) || 'Price';
-    mediumLabel.textContent = (category.priceLabels && category.priceLabels[0]) || 'M';
-    largeLabel.textContent = (category.priceLabels && category.priceLabels[1]) || 'L';
+    var sizeGroup = document.getElementById('sizePriceGroup');
+    var sizeRows = document.getElementById('sizePriceRows');
+    if (!category || !singleRow || !sizeGroup) return;
 
     var isNumeric = !priceTypeField || priceTypeField.value === 'numeric';
+    var usesSizePricing = pricingModeField && pricingModeField.value === 'sizes';
 
-    singleRow.classList.toggle('field-hidden', !isNumeric || category.allowMultiPrice);
-    multiRow.classList.toggle('field-hidden', !isNumeric || !category.allowMultiPrice);
+    singleRow.classList.toggle('field-hidden', !isNumeric || usesSizePricing);
+    sizeGroup.classList.toggle('field-hidden', !isNumeric || !usesSizePricing);
+
+    if (usesSizePricing && sizeRows && !sizeRows.querySelector('[data-size-price-row]')) {
+      sizeRows.innerHTML = renderSizePriceRows(defaultSizeRowsForCategory(category));
+    }
+
+    syncSizePriceRemoveButtons();
+  }
+
+  function syncSizePriceRemoveButtons() {
+    var rows = refs.drawerForm ? refs.drawerForm.querySelectorAll('[data-size-price-row]') : [];
+    Array.prototype.forEach.call(refs.drawerForm ? refs.drawerForm.querySelectorAll('[data-action="remove-size-price"]') : [], function(button) {
+      button.disabled = rows.length <= 1;
+    });
+  }
+
+  function addSizePriceRow(row) {
+    var rows = document.getElementById('sizePriceRows');
+    if (!rows) return;
+    rows.insertAdjacentHTML('beforeend', sizePriceRowMarkup(row || { label: '', price: '' }, rows.querySelectorAll('[data-size-price-row]').length, true));
+    syncSizePriceRemoveButtons();
+  }
+
+  function removeSizePriceRow(button) {
+    var rows = document.getElementById('sizePriceRows');
+    var row = button ? button.closest('[data-size-price-row]') : null;
+    var allRows = rows ? rows.querySelectorAll('[data-size-price-row]') : [];
+
+    if (!rows || !row) return;
+    if (allRows.length <= 1) {
+      Array.prototype.forEach.call(row.querySelectorAll('input'), function(input) {
+        input.value = '';
+      });
+      return;
+    }
+
+    row.parentNode.removeChild(row);
+    syncSizePriceRemoveButtons();
   }
 
   function syncItemImageModeOptions() {
@@ -2130,7 +2268,14 @@
           values[field.name] = '';
         }
       } else {
-        values[field.name] = field.value;
+        if (values[field.name] !== undefined) {
+          if (!Array.isArray(values[field.name])) {
+            values[field.name] = [values[field.name]];
+          }
+          values[field.name].push(field.value);
+        } else {
+          values[field.name] = field.value;
+        }
       }
     });
     return values;
@@ -2206,12 +2351,18 @@
     if (fieldName === 'imagePlaceholder') {
       return refs.drawerForm.querySelector('[name="imagePlaceholder"]:checked') || refs.drawerForm.querySelector('[name="imagePlaceholder"]');
     }
+    if (fieldName === 'sizes') {
+      return refs.drawerForm.querySelector('[name="sizeLabel"]') || refs.drawerForm.querySelector('[name="sizePrice"]');
+    }
     return refs.drawerForm.querySelector('[name="' + fieldName + '"]');
   }
 
   function getDrawerFieldGroup(fieldName) {
     if (fieldName === 'imageUpload') {
       return document.getElementById('drawerImageUploadGroup');
+    }
+    if (fieldName === 'sizes') {
+      return document.getElementById('sizePriceGroup');
     }
 
     var control = getDrawerFieldControl(fieldName);
@@ -2234,6 +2385,10 @@
     if (fieldName === 'imagePlaceholder') {
       var placeholderList = document.getElementById('drawerImagePlaceholderList');
       return placeholderList ? [placeholderList] : [];
+    }
+    if (fieldName === 'sizes') {
+      var sizePriceList = document.getElementById('sizePriceRows');
+      return sizePriceList ? [sizePriceList] : [];
     }
 
     var control = getDrawerFieldControl(fieldName);
@@ -2271,7 +2426,7 @@
 
   function clearDrawerValidationUI() {
     Array.prototype.forEach.call(
-      refs.drawerForm.querySelectorAll('.form-control.is-invalid, .img-upload-zone.is-invalid, .placeholder-choice-list.is-invalid'),
+      refs.drawerForm.querySelectorAll('.form-control.is-invalid, .img-upload-zone.is-invalid, .placeholder-choice-list.is-invalid, .size-price-list.is-invalid'),
       function(node) {
         node.classList.remove('is-invalid');
       }
@@ -2415,7 +2570,9 @@
       priceLarge: 'Large price',
       priceMedium: 'Medium price',
       priceSingle: 'Price',
+      pricingMode: 'Pricing mode',
       promotionId: 'Offer',
+      sizes: 'Size prices',
       startDate: 'Start date',
       subtext: 'Subtext',
       title: state.drawer && state.drawer.entity === 'promotion' ? 'Offer title' : 'Title'
@@ -2521,8 +2678,21 @@
     } else if (message === 'Price is required.') {
       addFieldError(mapped, 'priceSingle', 'Price is required.');
     } else if (message === 'At least one category price is required.') {
-      addFieldError(mapped, 'priceMedium', 'Add at least one size price.');
-      addFieldError(mapped, 'priceLarge', 'Add at least one size price.');
+      addFieldError(mapped, 'sizes', 'Add at least one size price.');
+    } else if (message === 'Add at least one size price.') {
+      addFieldError(mapped, 'sizes', 'Add at least one size price.');
+    } else if (message === 'Size label is required.') {
+      addFieldError(mapped, 'sizes', 'Every size needs a label.');
+    } else if (message === 'Size label is too long.') {
+      addFieldError(mapped, 'sizes', 'Size labels must be 40 characters or fewer.');
+    } else if (message === 'Size price is required.') {
+      addFieldError(mapped, 'sizes', 'Every size needs a price.');
+    } else if (message === 'Size price must be a valid positive amount.') {
+      addFieldError(mapped, 'sizes', 'Size prices must be valid numbers.');
+    } else if (message === 'Size labels must be unique.') {
+      addFieldError(mapped, 'sizes', 'Size labels must be unique.');
+    } else if (message === 'Choose a valid pricing mode.') {
+      addFieldError(mapped, 'pricingMode', 'Choose a valid pricing mode.');
     } else if (message === 'This category requires an image.') {
       addFieldError(mapped, 'imageMode', 'Image is required.');
     } else if (message === 'Image URL is invalid.') {
@@ -2573,6 +2743,23 @@
     return mapped;
   }
 
+  function buildSizePricePayload(values) {
+    var labels = arrayify(values.sizeLabel);
+    var prices = arrayify(values.sizePrice);
+    var rowCount = Math.max(labels.length, prices.length);
+    var sizes = [];
+    var index;
+
+    for (index = 0; index < rowCount; index += 1) {
+      sizes.push({
+        label: labels[index] || '',
+        price: prices[index] || ''
+      });
+    }
+
+    return sizes;
+  }
+
   function buildPayload(entity, mode, values) {
     values = values || collectFormData(refs.drawerForm);
     var payload = {};
@@ -2598,9 +2785,9 @@
       payload.name = values.name;
       payload.description = values.description;
       payload.priceType = values.priceType;
+      payload.pricingMode = values.pricingMode;
       payload.priceSingle = values.priceSingle;
-      payload.priceMedium = values.priceMedium;
-      payload.priceLarge = values.priceLarge;
+      payload.sizes = buildSizePricePayload(values);
       payload.promotionId = values.promotionId;
       payload.displayOrder = normalizeOptionalValue(values.displayOrder);
       payload.isAvailable = values.isAvailable;
@@ -2836,6 +3023,23 @@
   refs.drawerCancelBtn.addEventListener('click', closeDrawer);
   refs.drawerCloseBtn.addEventListener('click', closeDrawer);
   refs.drawerOverlay.addEventListener('click', closeDrawer);
+
+  refs.drawerForm.addEventListener('click', function(event) {
+    var button = event.target.closest ? event.target.closest('[data-action]') : null;
+    if (!button || !state.drawer || state.drawer.entity !== 'item') return;
+
+    if (button.dataset.action === 'add-size-price') {
+      event.preventDefault();
+      addSizePriceRow();
+      if (state.drawerValidationActive) syncDrawerValidationFeedback();
+    }
+
+    if (button.dataset.action === 'remove-size-price') {
+      event.preventDefault();
+      removeSizePriceRow(button);
+      if (state.drawerValidationActive) syncDrawerValidationFeedback();
+    }
+  });
 
   refs.drawerForm.addEventListener('input', function() {
     if (state.drawer && state.drawer.entity === 'item') {

@@ -44,9 +44,11 @@ async function ensureSchema(sql) {
       category_id INTEGER NOT NULL REFERENCES menu_categories(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       description TEXT,
+      pricing_mode TEXT NOT NULL DEFAULT 'single',
       price_single NUMERIC(10,2),
       price_medium NUMERIC(10,2),
       price_large NUMERIC(10,2),
+      sizes JSONB NOT NULL DEFAULT '[]'::JSONB,
       image_url TEXT,
       image_path TEXT,
       image_data TEXT,
@@ -115,6 +117,8 @@ async function ensureSchema(sql) {
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS position INTEGER`);
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS promotion_id INTEGER`);
   await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS price_type TEXT NOT NULL DEFAULT 'numeric'`);
+  await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS pricing_mode TEXT NOT NULL DEFAULT 'single'`);
+  await sql(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS sizes JSONB NOT NULL DEFAULT '[]'::JSONB`);
 
   await sql(`ALTER TABLE promotions ADD COLUMN IF NOT EXISTS badge_text TEXT`);
   await sql(`ALTER TABLE promotions ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0`);
@@ -236,6 +240,29 @@ async function ensureSchema(sql) {
       );
     }
   }
+
+  await sql(`
+    UPDATE menu_items i
+    SET
+      pricing_mode = 'sizes',
+      sizes = (
+        SELECT COALESCE(
+          jsonb_agg(jsonb_build_object('label', label, 'price', price) ORDER BY sort_order),
+          '[]'::jsonb
+        )
+        FROM (
+          VALUES
+            (1, COALESCE(NULLIF(c.price_labels->>0, ''), 'M'), i.price_medium),
+            (2, COALESCE(NULLIF(c.price_labels->>1, ''), 'L'), i.price_large)
+        ) AS candidate_prices(sort_order, label, price)
+        WHERE price IS NOT NULL
+      )
+    FROM menu_categories c
+    WHERE c.id = i.category_id
+      AND jsonb_array_length(COALESCE(i.sizes, '[]'::jsonb)) = 0
+      AND (i.price_medium IS NOT NULL OR i.price_large IS NOT NULL)
+      AND (c.allow_multi_price = TRUE OR i.price_single IS NULL)
+  `);
 
   const featuredCountRows = await sql(`SELECT COUNT(*)::int AS count FROM featured_items`);
   const featuredCount = featuredCountRows[0] ? featuredCountRows[0].count : 0;
