@@ -2,28 +2,29 @@
    Moody Brewer — Admin Panel Styles
    ═══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700&family=Roboto:wght@400;500;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --sidebar-w: 260px;
-  --sidebar-bg: #1a1008;
+  --sidebar-bg: #33211D; /* match main site secondary */
   --sidebar-hover: rgba(255,255,255,.06);
-  --sidebar-active: rgba(196,143,82,.15);
-  --accent: #c48f52;
-  --accent-dark: #a87640;
-  --accent-light: #f5e6d0;
+  --accent: #DA9F5B; /* primary */
+  --accent-rgb: 218,159,91;
+  --accent-dark: #be792b;
+  --accent-light: #f8efe4;
+  --sidebar-active: rgba(var(--accent-rgb),.15);
   --danger: #e05252;
   --danger-light: #fdf0f0;
-  --success: #3dba7e;
+  --success: #28a745;
   --success-light: #edfaf4;
   --warn: #f0a500;
-  --bg: #f4f4f6;
+  --bg: #FFFBF2;
   --surface: #ffffff;
   --border: #e8e8ec;
-  --text-primary: #1a1008;
-  --text-secondary: #6b6b78;
+  --text-primary: #33211D;
+  --text-secondary: #555555;
   --text-muted: #a0a0ad;
   --header-h: 64px;
   --radius: 12px;
@@ -35,9 +36,9 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Montserrat', system-ui, sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(196,143,82,.10), transparent 24%),
+    radial-gradient(circle at top left, rgba(var(--accent-rgb),.10), transparent 24%),
     linear-gradient(180deg, #faf7f3 0%, var(--bg) 220px);
   color: var(--text-primary);
   min-height: 100vh;
@@ -52,7 +53,7 @@ body {
   justify-content: center;
   padding: clamp(16px, 2.4vh, 26px) clamp(16px, 2vw, 28px);
   background:
-    radial-gradient(circle at 16% 18%, rgba(196,143,82,.22), rgba(196,143,82,0) 24%),
+    radial-gradient(circle at 16% 18%, rgba(var(--accent-rgb),.22), rgba(var(--accent-rgb),0) 24%),
     radial-gradient(circle at 84% 12%, rgba(255,255,255,.06), rgba(255,255,255,0) 18%),
     linear-gradient(135deg, #120b06 0%, #1d120a 46%, #26180d 100%);
   z-index: 9999;
@@ -78,7 +79,7 @@ body {
 #loginScreen::after {
   background:
     radial-gradient(circle at 18% 80%, rgba(232,111,146,.12), rgba(232,111,146,0) 24%),
-    radial-gradient(circle at 78% 72%, rgba(196,143,82,.10), rgba(196,143,82,0) 26%);
+    radial-gradient(circle at 78% 72%, rgba(var(--accent-rgb),.10), rgba(var(--accent-rgb),0) 26%);
 }
 
 .loading-screen-open {
@@ -203,8 +204,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, rgba(248,220,181,.18), rgba(255,255,255,.03));
-  color: #f8dcb5;
+  background: linear-gradient(145deg, rgba(var(--accent-rgb),.14), rgba(255,255,255,.03));
+  color: var(--accent);
   font-size: 16px;
 }
 .login-hero__feature strong {
@@ -324,8 +325,8 @@ body {
   color: #a69d95;
 }
 .login-input-wrap input:focus {
-  border-color: rgba(196,143,82,.72);
-  box-shadow: 0 0 0 4px rgba(196,143,82,.12);
+  border-color: rgba(var(--accent-rgb),.72);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.12);
   background: #fff;
 }
 .login-input-wrap input.is-invalid {
@@ -412,7 +413,7 @@ body {
   justify-content: center;
   padding: clamp(16px, 2.4vh, 26px) clamp(16px, 2vw, 28px);
   background:
-    radial-gradient(circle at 18% 18%, rgba(196,143,82,.20), rgba(196,143,82,0) 22%),
+    radial-gradient(circle at 18% 18%, rgba(var(--accent-rgb),.20), rgba(var(--accent-rgb),0) 22%),
     radial-gradient(circle at 82% 16%, rgba(255,255,255,.06), rgba(255,255,255,0) 18%),
     linear-gradient(145deg, rgba(16,10,6,.96), rgba(28,18,10,.98));
   z-index: 10001;
@@ -558,8 +559,8 @@ body {
   line-height: 1;
 }
 
-.loading-meta__pill i {
-  color: #f8dcb5;
+  .loading-meta__pill i {
+  color: var(--accent);
 }
 
 .loading-progress {
@@ -576,7 +577,7 @@ body {
   width: 36%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, rgba(248,220,181,.16), rgba(248,220,181,.95), rgba(196,143,82,.35));
+  background: linear-gradient(90deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.95), rgba(var(--accent-rgb),.35));
   animation: loading-bar 1.7s ease-in-out infinite;
 }
 
@@ -616,14 +617,14 @@ body {
 
 .loading-step.active {
   color: #fff8f3;
-  background: linear-gradient(180deg, rgba(248,220,181,.18), rgba(255,255,255,.05));
-  border-color: rgba(248,220,181,.26);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),.18), rgba(255,255,255,.05));
+  border-color: rgba(var(--accent-rgb),.26);
   transform: translateY(-1px);
 }
 
 .loading-step.active .loading-step__dot {
-  background: #f8dcb5;
-  box-shadow: 0 0 0 6px rgba(248,220,181,.10);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 6px rgba(var(--accent-rgb),.10);
 }
 
 .loading-step.complete {
@@ -795,7 +796,7 @@ body {
 .stat-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(196,143,82,.28);
+  border-color: rgba(var(--accent-rgb),.28);
 }
 .stat-icon {
   width: 48px; height: 48px; border-radius: 12px;
@@ -804,8 +805,8 @@ body {
 }
 .stat-icon.brown { background: var(--accent-light); color: var(--accent); }
 .stat-icon.green  { background: var(--success-light); color: var(--success); }
-.stat-icon.blue   { background: #e8f0fe; color: #3a6fd8; }
-.stat-icon.purple { background: #f3effe; color: #7c4ddb; }
+.stat-icon.blue   { background: rgba(var(--accent-rgb),.08); color: var(--accent-dark); }
+.stat-icon.purple { background: rgba(var(--accent-rgb),.06); color: var(--accent-dark); }
 .stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; }
 .stat-value { font-size: 26px; font-weight: 700; }
 
@@ -922,8 +923,8 @@ body {
   color: var(--accent); font-size: 32px;
 }
 .item-img-placeholder--food {
-  background: rgba(239, 210, 164, 0.38);
-  color: #9a6132;
+  background: rgba(var(--accent-rgb), 0.38);
+  color: var(--accent-dark);
 }
 .item-img-placeholder--preview {
   width: 88px;
@@ -1063,7 +1064,7 @@ body {
 .entity-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(196,143,82,.24);
+  border-color: rgba(var(--accent-rgb),.24);
 }
 .entity-card__head {
   display: flex;
@@ -1172,7 +1173,7 @@ body {
 }
 .audit-entry:hover {
   transform: translateY(-1px);
-  border-color: rgba(196,143,82,.24);
+  border-color: rgba(var(--accent-rgb),.24);
   box-shadow: var(--shadow-md);
 }
 .audit-entry::before {
@@ -1383,7 +1384,7 @@ body {
 .audit-preview-chip--more {
   color: var(--accent);
   background: var(--accent-light);
-  border-color: rgba(196,143,82,.18);
+  border-color: rgba(var(--accent-rgb),.18);
   font-weight: 800;
 }
 .audit-details {
@@ -1597,8 +1598,8 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: rgba(196,143,82,.08);
-  border: 1px solid rgba(196,143,82,.16);
+  background: rgba(var(--accent-rgb),.08);
+  border: 1px solid rgba(var(--accent-rgb),.16);
   color: var(--accent);
   display: flex;
   align-items: center;
@@ -1684,7 +1685,7 @@ body {
 }
 .form-control:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(196,143,82,.15);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15);
 }
 .form-control.is-invalid {
   border-color: var(--danger);
@@ -1800,7 +1801,7 @@ select.form-control { appearance: none; cursor: pointer; background-image: url("
   gap: 5px;
 }
 .img-upload-zone:hover, .img-upload-zone.drag-over {
-  border-color: var(--accent); background: rgba(196,143,82,.06);
+  border-color: var(--accent); background: rgba(var(--accent-rgb),.06);
 }
 .img-upload-zone.is-invalid {
   border-color: var(--danger);
@@ -2080,7 +2081,7 @@ input[type="checkbox"].sr-only { position: absolute; opacity: 0; pointer-events:
   padding: 32px; max-width: 400px; width: 90%;
   text-align: center; box-shadow: var(--shadow-lg);
   transform: scale(.95); transition: transform .25s;
-  border: 1px solid rgba(196,143,82,.12);
+  border: 1px solid rgba(var(--accent-rgb),.12);
 }
 .modal-overlay.open .modal { transform: scale(1); }
 .modal-icon {

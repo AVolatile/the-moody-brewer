@@ -1,0 +1,34 @@
+{
+  "title": "Transform Admin Overview into Main Dashboard",
+  "description": "Inspect the admin panel and convert the Overview view into a full Main dashboard with quick actions, navigable stat cards, and a recent activity feed.",
+  "repo_root": ".",
+  "files_to_modify": [
+    "admin/index.html",
+    "assets/js/admin-app.js",
+    "assets/css/admin.css"
+  ],
+  "instructions": [
+    "Open the admin UI at admin/index.html and review the existing Overview implementation.",
+    "Rename the UI label and view title from 'Overview' to 'Main' so this view reads as the primary dashboard.",
+    "Make the stat cards in the top stats row actionable (clickable) so each card navigates to the appropriate view: categories, items, promotions, audit.",
+    "Add a 'Quick Actions' section to the Main view with buttons to create: Menu Item, Section, Spotlight, Offer. Buttons should use the existing drawer flow (data-action=\"create\" and data-entity).",
+    "Add a 'Recent Activity' section that shows the latest 5-6 audit log entries (from state.snapshot.auditLogs). Each entry should include actor, brief summary, and timestamp and be clickable to open the Audit view (data-action=\"navigate\" data-view=\"audit\").",
+    "Wire up event handlers: handle data-action=\"navigate\" in the common action handler; add click delegation for the stats row to support navigation; ensure quick action buttons trigger the existing create drawer logic.",
+    "Keep styling minimal and reuse existing CSS classes. Add small accessibility hints: role=\"button\" and tabindex on interactive non-button stat cards.",
+    "Run a quick smoke test in a browser (or static server) to verify that: (1) the sidebar label reads 'Main', (2) clicking stat cards navigates to their views, (3) quick actions open the create drawer, and (4) recent activity entries appear and navigate to Audit view."
+  ],
+  "acceptance_criteria": [
+    "Sidebar shows 'Main' for the dashboard link.",
+    "Topbar/view title displays 'Main' when active.",
+    "Stat cards navigate to the correct views when clicked.",
+    "Quick Actions open the appropriate create drawer for each entity.",
+    "Recent Activity lists the latest audit entries and clicking an entry opens the Audit view.",
+    "No obvious JavaScript syntax errors are introduced.",
+    "All new interactive elements include accessible attributes (role/tabindex or actual button elements)."
+  ],
+  "run_instructions": [
+    "Serve the project (e.g., run a static file server) and open /admin/index.html in a browser.",
+    "Sign in with admin credentials and verify the Main dashboard behavior described above."
+  ],
+  "notes": "This prompt is intended for an automated code assistant (Codex-like model). Make minimal, focused changes and avoid large refactors. Use the existing drawer and API endpoints; do not change API contracts."
+}
