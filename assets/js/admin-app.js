@@ -87,6 +87,7 @@
     navCategoryCount: document.getElementById('navCategoryCount'),
     navItemCount: document.getElementById('navItemCount'),
     navFeaturedCount: document.getElementById('navFeaturedCount'),
+    navReviewCount: document.getElementById('navReviewCount'),
     navPromotionCount: document.getElementById('navPromotionCount'),
     navAuditCount: document.getElementById('navAuditCount')
   };
@@ -98,6 +99,7 @@
     categories: { title: 'Menu Sections', createLabel: 'Add Section', createEntity: 'category' },
     items: { title: 'Menu Items', createLabel: 'Add Menu Item', createEntity: 'item' },
     featured: { title: 'Menu Spotlight', createLabel: 'Add Spotlight Item', createEntity: 'featured' },
+    reviews: { title: 'Reviews', createLabel: '', createEntity: '', canCreate: false },
     promotions: { title: 'Special Offers', createLabel: 'Add Offer', createEntity: 'promotion' },
     audit: { title: 'Audit Log', createLabel: '', createEntity: '', canCreate: false }
   };
@@ -654,6 +656,53 @@
     return 'Updated value';
   }
 
+  function getRecentAuditLogs(limit) {
+    return (state.snapshot.auditLogs || []).slice().sort(function(a, b) {
+      var ad = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      var bd = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bd - ad;
+    }).slice(0, limit || 6);
+  }
+
+  function getDashboardCounts() {
+    var dashboard = state.snapshot.dashboard || {};
+    var featuredItems = state.snapshot.featuredItems || [];
+    var promotions = state.snapshot.promotions || [];
+    var menuItems = state.snapshot.menuItems || [];
+    var recentLogs = state.snapshot.auditLogs || [];
+
+    return {
+      totalItems: dashboard.itemCount != null ? dashboard.itemCount : menuItems.length,
+      activeFeatured: featuredItems.filter(function(item) {
+        return item.isActive !== false;
+      }).length,
+      pendingReviews: 0,
+      recentUpdates: dashboard.auditLogCount || recentLogs.length,
+      availableItems: dashboard.availableItemCount != null
+        ? dashboard.availableItemCount
+        : menuItems.filter(function(item) { return item.isAvailable !== false; }).length,
+      menuSections: dashboard.categoryCount != null ? dashboard.categoryCount : (state.snapshot.categories || []).length,
+      activeOffers: dashboard.activePromotionCount != null
+        ? dashboard.activePromotionCount
+        : promotions.filter(function(promotion) { return promotion.isCurrent; }).length
+    };
+  }
+
+  function focusDashboardActivity() {
+    if (state.view !== 'overview') {
+      state.view = 'overview';
+      setSidebarOpen(false);
+      renderCurrentView();
+    }
+
+    window.setTimeout(function() {
+      var activity = document.getElementById('dashboardRecentActivity');
+      if (!activity) return;
+      activity.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      activity.focus({ preventScroll: true });
+    }, 0);
+  }
+
   function truncateAuditValue(value, maxLength) {
     var text = String(value == null || value === '' ? '—' : value);
     var limit = maxLength || 54;
@@ -989,18 +1038,20 @@
   }
 
   function renderStats() {
-    var dashboard = state.snapshot.dashboard;
+    var counts = getDashboardCounts();
     refs.statsRow.innerHTML = [
-      statCard('fa-layer-group', 'brown', 'Menu Sections', dashboard.categoryCount, 'categories'),
-      statCard('fa-coffee', 'blue', 'Menu Items', dashboard.itemCount, 'items'),
-      statCard('fa-check-circle', 'green', 'Available Today', dashboard.availableItemCount, 'items'),
-      statCard('fa-tags', 'purple', 'Current Offers', dashboard.activePromotionCount, 'promotions'),
-      statCard('fa-history', 'brown', 'Recent Changes', dashboard.auditLogCount || (state.snapshot.auditLogs || []).length, 'audit')
+      statCard('fa-coffee', 'blue', 'Total Menu Items', counts.totalItems, { view: 'items' }),
+      statCard('fa-star', 'brown', 'Active Featured Items', counts.activeFeatured, { view: 'featured' }),
+      statCard('fa-comment-dots', 'purple', 'Pending Reviews', counts.pendingReviews, { view: 'reviews' }),
+      statCard('fa-history', 'green', 'Recent Updates', counts.recentUpdates, { action: 'focus-dashboard-activity' })
     ].join('');
   }
 
-  function statCard(icon, colorClass, label, value, linkView) {
-    var attrs = linkView ? ' data-action="navigate" data-view="' + escapeHtml(linkView) + '" role="button" tabindex="0"' : '';
+  function statCard(icon, colorClass, label, value, options) {
+    var settings = options || {};
+    var action = settings.action || (settings.view ? 'navigate' : '');
+    var attrs = action ? ' data-action="' + escapeHtml(action) + '" role="button" tabindex="0"' : '';
+    if (settings.view) attrs += ' data-view="' + escapeHtml(settings.view) + '"';
     return [
       '<article class="stat-card"' + attrs + '>',
         '<div class="stat-icon ', colorClass, '"><i class="fa ', icon, '"></i></div>',
@@ -1016,102 +1067,170 @@
     var activePromotions = sortByDisplayOrder(state.snapshot.promotions).filter(function(promotion) {
       return promotion.isCurrent;
     });
-    var featuredItems = sortByDisplayOrder(state.snapshot.featuredItems).slice(0, 4);
-    var categories = sortByDisplayOrder(state.snapshot.categories);
-    var recentLogs = (state.snapshot.auditLogs || []).slice().sort(function(a, b) {
-      var ad = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      var bd = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bd - ad;
-    }).slice(0, 6);
+    var featuredItems = sortByDisplayOrder(state.snapshot.featuredItems).filter(function(item) {
+      return item.isActive !== false;
+    }).slice(0, 4);
+    var recentLogs = getRecentAuditLogs(6);
+    var counts = getDashboardCounts();
+    var latestLog = recentLogs[0] || null;
+    var latestTimestamp = latestLog ? formatAuditTimestampParts(latestLog.createdAt) : null;
 
     return [
-      '<section class="section-card">',
-        '<div class="section-card-header"><h3>Quick Actions</h3></div>',
-        '<div class="content-pad">',
-          '<div class="quick-actions">',
-            '<button class="btn-topbar primary" type="button" data-action="create" data-entity="item"><i class="fa fa-plus"></i><span>Add Menu Item</span></button>',
-            '<button class="btn-topbar outline" type="button" data-action="create" data-entity="category"><i class="fa fa-plus"></i><span>Add Section</span></button>',
-            '<button class="btn-topbar outline" type="button" data-action="create" data-entity="featured"><i class="fa fa-plus"></i><span>Add Spotlight</span></button>',
-            '<button class="btn-topbar outline" type="button" data-action="create" data-entity="promotion"><i class="fa fa-plus"></i><span>Add Offer</span></button>',
+      '<section class="dashboard-hero">',
+        '<div class="dashboard-hero__copy">',
+          '<p class="dashboard-eyebrow">Admin Dashboard</p>',
+          '<h2>Command center for the Moody Brewer website.</h2>',
+          '<p>Manage the menu, homepage spotlight, offers, and customer-facing content from one focused workspace.</p>',
+        '</div>',
+        '<div class="dashboard-hero__actions">',
+          '<button class="btn-topbar primary" type="button" data-action="create" data-entity="item"><i class="fa fa-plus"></i><span>Add Menu Item</span></button>',
+          '<button class="btn-topbar outline" type="button" data-action="navigate" data-view="audit"><i class="fa fa-history"></i><span>View Audit Log</span></button>',
+        '</div>',
+      '</section>',
+
+      '<section class="dashboard-quick-panel" aria-label="Quick actions">',
+        '<div class="dashboard-section-heading">',
+          '<div>',
+            '<p class="dashboard-eyebrow">Quick Actions</p>',
+            '<h3>Common updates</h3>',
           '</div>',
+          '<span class="meta-pill warm">Live site controls</span>',
+        '</div>',
+        '<div class="dashboard-action-grid">',
+          '<button class="dashboard-action-card primary" type="button" data-action="create" data-entity="item">',
+            '<span class="dashboard-action-card__icon"><i class="fa fa-plus"></i></span>',
+            '<span><strong>Add Menu Item</strong><small>Create a new drink, bite, or menu listing.</small></span>',
+          '</button>',
+          '<button class="dashboard-action-card" type="button" data-action="create" data-entity="featured">',
+            '<span class="dashboard-action-card__icon"><i class="fa fa-star"></i></span>',
+            '<span><strong>Add New Arrival</strong><small>Feature a menu item in the homepage spotlight.</small></span>',
+          '</button>',
+          '<button class="dashboard-action-card" type="button" data-action="navigate" data-view="reviews">',
+            '<span class="dashboard-action-card__icon"><i class="fa fa-comment-dots"></i></span>',
+            '<span><strong>Manage Reviews</strong><small>Review tools are ready for a connected source.</small></span>',
+          '</button>',
+          '<button class="dashboard-action-card" type="button" data-action="navigate" data-view="categories">',
+            '<span class="dashboard-action-card__icon"><i class="fa fa-edit"></i></span>',
+            '<span><strong>Update Site Content</strong><small>Adjust menu sections and publishing rules.</small></span>',
+          '</button>',
         '</div>',
       '</section>',
-      '<section class="section-card">',
-        '<div class="section-card-header"><h3>Recent Activity</h3></div>',
-        '<div class="content-pad">',
-          (recentLogs.length ? recentLogs.map(function(entry) {
-            var ts = formatAuditTimestampParts(entry.createdAt);
-            return [
-              '<div class="overview-activity-item" data-action="navigate" data-view="audit">',
-                '<div class="overview-activity__icon"><i class="fa ', auditActionIcon(entry.action), '"></i></div>',
-                '<div class="overview-activity__copy">',
-                  '<strong>', escapeHtml(entry.actorUsername || 'Admin user'), '</strong>',
-                  '<div class="overview-activity__summary">', escapeHtml(entry.summary || auditEntryTitle(entry)), '</div>',
-                '</div>',
-                '<div class="overview-activity__time"><small>', escapeHtml(ts.time), '</small></div>',
-              '</div>'
-            ].join('');
-          }).join('') : '<div class="empty-state compact"><i class="fa fa-history"></i><h4>No recent activity</h4><p>Changes to the website will appear here.</p></div>'),
-        '</div>',
-      '</section>',
+
+      '<div class="dashboard-main-grid">',
+        '<section class="section-card dashboard-activity-card" id="dashboardRecentActivity" tabindex="-1">',
+          '<div class="section-card-header">',
+            '<h3>Recent Activity</h3>',
+            '<button class="btn-topbar outline small-btn" type="button" data-action="navigate" data-view="audit"><i class="fa fa-history"></i><span>Open Log</span></button>',
+          '</div>',
+          '<div class="content-pad dashboard-activity-list">',
+            (recentLogs.length ? recentLogs.map(function(entry) {
+              var ts = formatAuditTimestampParts(entry.createdAt);
+              return [
+                '<button class="dashboard-activity-item" type="button" data-action="navigate" data-view="audit">',
+                  '<span class="dashboard-activity-item__icon ', auditActionTone(entry.action), '"><i class="fa ', auditActionIcon(entry.action), '"></i></span>',
+                  '<span class="dashboard-activity-item__body">',
+                    '<span class="dashboard-activity-item__meta">',
+                      '<strong>', escapeHtml(auditActionTitle(entry.action)), '</strong>',
+                      '<em>', escapeHtml(auditEntityTitle(entry.entityType)), '</em>',
+                    '</span>',
+                    '<span class="dashboard-activity-item__summary">', escapeHtml(entry.summary || auditEntryTitle(entry)), '</span>',
+                    '<span class="dashboard-activity-item__target">', escapeHtml(entry.entityLabel || entry.actorUsername || 'Website update'), '</span>',
+                  '</span>',
+                  '<time class="dashboard-activity-item__time" datetime="', escapeHtml(ts.datetime), '" title="', escapeHtml(ts.full), '">',
+                    '<span>', escapeHtml(ts.time), '</span>',
+                    '<small>', escapeHtml(ts.date), '</small>',
+                  '</time>',
+                '</button>'
+              ].join('');
+            }).join('') : '<div class="empty-state compact"><i class="fa fa-history"></i><h4>No recent activity yet</h4><p>Menu, spotlight, offer, and review changes will appear here once they are saved.</p></div>'),
+          '</div>',
+        '</section>',
+
+        '<aside class="dashboard-side-stack">',
+          '<section class="section-card">',
+            '<div class="section-card-header"><h3>Operational Summary</h3></div>',
+            '<div class="dashboard-summary-list">',
+              '<div class="dashboard-summary-row"><span>Available menu items</span><strong>', escapeHtml(String(counts.availableItems)), ' / ', escapeHtml(String(counts.totalItems)), '</strong></div>',
+              '<div class="dashboard-summary-row"><span>Live spotlight cards</span><strong>', escapeHtml(String(counts.activeFeatured)), '</strong></div>',
+              '<div class="dashboard-summary-row"><span>Current offers</span><strong>', escapeHtml(String(counts.activeOffers)), '</strong></div>',
+              '<div class="dashboard-summary-row"><span>Menu sections</span><strong>', escapeHtml(String(counts.menuSections)), '</strong></div>',
+              '<div class="dashboard-summary-row"><span>Latest update</span><strong>', latestTimestamp ? escapeHtml(latestTimestamp.date) : 'No activity yet', '</strong></div>',
+            '</div>',
+          '</section>',
+
+          '<section class="section-card">',
+            '<div class="section-card-header"><h3>Menu Spotlight</h3></div>',
+            '<div class="content-pad dashboard-mini-list">',
+              (featuredItems.length ? featuredItems.map(function(item) {
+                return [
+                  '<button class="overview-list-item overview-list-item--clickable" type="button" data-action="navigate" data-view="featured">',
+                    '<span>',
+                      '<strong>', escapeHtml(item.headline), '</strong>',
+                      '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Homepage spotlight')), '</p>',
+                    '</span>',
+                    '<span class="meta-pill success">Live</span>',
+                  '</button>'
+                ].join('');
+              }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No spotlight items yet</h4><p>Select menu items whenever you want to spotlight a favorite on the homepage.</p></div>'),
+            '</div>',
+          '</section>',
+        '</aside>',
+      '</div>',
+
       '<div class="overview-grid">',
         '<section class="section-card">',
-          '<div class="section-card-header"><h3>Current Offers</h3></div>',
-          '<div class="content-pad">',
-            (activePromotions.length ? activePromotions.map(function(promotion) {
+          '<div class="section-card-header">',
+            '<h3>Current Offers</h3>',
+            '<button class="btn-topbar outline small-btn" type="button" data-action="navigate" data-view="promotions"><i class="fa fa-tags"></i><span>Manage</span></button>',
+          '</div>',
+          '<div class="content-pad dashboard-mini-list">',
+            (activePromotions.length ? activePromotions.slice(0, 4).map(function(promotion) {
               return [
-                '<div class="overview-list-item">',
-                  '<div>',
+                '<button class="overview-list-item overview-list-item--clickable" type="button" data-action="navigate" data-view="promotions">',
+                  '<span>',
                     '<strong>', escapeHtml(promotion.title), '</strong>',
                     '<p>', escapeHtml(promotion.description || 'Showing on the website now.'), '</p>',
-                  '</div>',
+                  '</span>',
                   '<span class="meta-pill warm">', escapeHtml(promotion.label || 'Now Showing'), '</span>',
-                '</div>'
+                '</button>'
               ].join('');
             }).join('') : '<div class="empty-state compact"><i class="fa fa-tags"></i><h4>No offers right now</h4><p>Add a special offer whenever you want to highlight something new.</p></div>'),
           '</div>',
         '</section>',
+
         '<section class="section-card">',
-          '<div class="section-card-header"><h3>Menu Spotlight</h3></div>',
+          '<div class="section-card-header">',
+            '<h3>Review Queue</h3>',
+            '<button class="btn-topbar outline small-btn" type="button" data-action="navigate" data-view="reviews"><i class="fa fa-comment-dots"></i><span>Open</span></button>',
+          '</div>',
           '<div class="content-pad">',
-            (featuredItems.length ? featuredItems.map(function(item) {
-              return [
-                '<div class="overview-list-item">',
-                  '<div>',
-                    '<strong>', escapeHtml(item.headline), '</strong>',
-                    '<p>', escapeHtml(item.linkedItem ? item.linkedItem.name : (item.subtext || 'Menu spotlight')), '</p>',
-                  '</div>',
-                  '<span class="meta-pill ', item.isActive ? 'success' : 'muted', '">', item.isActive ? 'Visible' : 'Hidden', '</span>',
-                '</div>'
-              ].join('');
-            }).join('') : '<div class="empty-state compact"><i class="fa fa-star"></i><h4>No spotlight items yet</h4><p>Select menu items whenever you want to spotlight a favorite on the homepage.</p></div>'),
+            '<div class="empty-state compact"><i class="fa fa-comment-dots"></i><h4>No review source connected</h4><p>Pending customer reviews will appear here after a reviews integration is added.</p></div>',
           '</div>',
         '</section>',
-      '</div>',
-      '<section class="section-card mt-entity">',
-        '<div class="section-card-header"><h3>Menu Sections</h3></div>',
-        '<div class="entity-grid compact-grid">',
-          (categories.length ? categories.map(function(category) {
-            var itemCount = state.snapshot.menuItems.filter(function(item) {
-              return Number(item.categoryId) === Number(category.id);
-            }).length;
-            return [
-              '<article class="entity-card">',
-                '<div class="entity-card__head">',
-                  '<div>',
-                    '<div class="entity-eyebrow">Menu section</div>',
-                    '<h4>', escapeHtml(category.name), '</h4>',
-                  '</div>',
-                  '<span class="meta-pill">', escapeHtml(String(itemCount)), ' items</span>',
-                '</div>',
-                '<p>', escapeHtml(category.description || 'A clean section ready for your menu items.'), '</p>',
-                '<div class="entity-card__meta">',
-                  '<span class="meta-pill ', category.allowMultiPrice ? 'info' : 'muted', '">', category.allowMultiPrice ? 'Multiple sizes' : 'Single price', '</span>',
-                  '<span class="meta-pill ', category.requireImage ? 'warm' : 'muted', '">', category.requireImage ? 'Photo needed' : 'Photo optional', '</span>',
-                '</div>',
-              '</article>'
-            ].join('');
-          }).join('') : '<div class="empty-state compact"><i class="fa fa-layer-group"></i><h4>No menu sections yet</h4><p>Add a section to begin organizing the menu.</p></div>'),
+      '</div>'
+    ].join('');
+  }
+
+  function renderReviewsView() {
+    return [
+      '<section class="section-card">',
+        '<div class="section-card-header">',
+          '<h3>Reviews</h3>',
+          '<span class="meta-pill muted">0 pending</span>',
+        '</div>',
+        '<div class="content-pad">',
+          '<div class="dashboard-empty-panel">',
+            '<div class="dashboard-empty-panel__icon"><i class="fa fa-comment-dots"></i></div>',
+            '<div>',
+              '<p class="dashboard-eyebrow">Review Management</p>',
+              '<h3>No reviews integration is connected yet.</h3>',
+              '<p>This admin panel does not currently receive customer reviews from a database, form, or third-party provider. Once that source exists, pending reviews can be listed here for approval and publishing.</p>',
+              '<div class="quick-actions">',
+                '<button class="btn-topbar outline" type="button" data-action="navigate" data-view="overview"><i class="fa fa-chart-line"></i><span>Back to Dashboard</span></button>',
+                '<button class="btn-topbar outline" type="button" data-action="navigate" data-view="audit"><i class="fa fa-history"></i><span>View Audit Log</span></button>',
+              '</div>',
+            '</div>',
+          '</div>',
         '</div>',
       '</section>'
     ].join('');
@@ -1337,6 +1456,7 @@
     if (state.view === 'categories') html = renderCategoriesView();
     else if (state.view === 'items') html = renderItemsView();
     else if (state.view === 'featured') html = renderFeaturedView();
+    else if (state.view === 'reviews') html = renderReviewsView();
     else if (state.view === 'promotions') html = renderPromotionsView();
     else if (state.view === 'audit') html = renderAuditView();
     else html = renderOverviewView();
@@ -1399,16 +1519,28 @@
       button.addEventListener('click', handleActionClick);
     });
     if (refs.statsRow) {
-      refs.statsRow.addEventListener('click', function(event) {
+      refs.statsRow.onclick = function(event) {
         var el = event.target && event.target.closest ? event.target.closest('[data-action="navigate"]') : null;
-        if (!el) return;
-        var view = el.getAttribute('data-view');
-        if (view) {
-          state.view = view;
-          setSidebarOpen(false);
-          renderCurrentView();
+        if (el) {
+          var view = el.getAttribute('data-view');
+          if (view) {
+            state.view = view;
+            setSidebarOpen(false);
+            renderCurrentView();
+          }
+          return;
         }
-      });
+        if (event.target && event.target.closest && event.target.closest('[data-action="focus-dashboard-activity"]')) {
+          focusDashboardActivity();
+        }
+      };
+      refs.statsRow.onkeydown = function(event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        var el = event.target && event.target.closest ? event.target.closest('[data-action]') : null;
+        if (!el) return;
+        event.preventDefault();
+        el.click();
+      };
     }
   }
 
@@ -1442,12 +1574,17 @@
       }
       return;
     }
+    if (action === 'focus-dashboard-activity') {
+      focusDashboardActivity();
+      return;
+    }
   }
 
   function renderNavigationCounts() {
     refs.navCategoryCount.textContent = state.snapshot.categories.length;
     refs.navItemCount.textContent = state.snapshot.menuItems.length;
     refs.navFeaturedCount.textContent = state.snapshot.featuredItems.length;
+    if (refs.navReviewCount) refs.navReviewCount.textContent = '0';
     refs.navPromotionCount.textContent = state.snapshot.promotions.length;
     refs.navAuditCount.textContent = (state.snapshot.auditLogs || []).length;
   }
