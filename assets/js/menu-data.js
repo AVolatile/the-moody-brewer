@@ -277,6 +277,61 @@
     return buildSinglePriceMarkup(item);
   }
 
+  function hasDisplayImage(item) {
+    var imageUrl = item && item.imageUrl ? String(item.imageUrl).trim() : '';
+    return Boolean(imageUrl && !getImagePlaceholderConfig(imageUrl));
+  }
+
+  function categoryHasDisplayImages(category) {
+    var items = category && Array.isArray(category.items) ? category.items : [];
+    return items.some(hasDisplayImage);
+  }
+
+  function buildLeaderPriceRows(item, category) {
+    var priceType = item.priceType || 'numeric';
+
+    function row(label, value, originalValue) {
+      return [
+        '<div class="menu-leader-row">',
+          '<span class="menu-leader-row__item">' + escapeHtml(label) + '</span>',
+          '<span class="menu-leader-row__dots" aria-hidden="true"></span>',
+          '<span class="menu-leader-row__price">',
+            escapeHtml(value),
+            (originalValue ? '<span class="menu-price-original">' + escapeHtml(originalValue) + '</span>' : ''),
+          '</span>',
+        '</div>'
+      ].join('');
+    }
+
+    if (priceType === 'tbd') return row(item.name, 'TBD');
+    if (priceType === 'in_store') return row(item.name, 'See in store');
+
+    if (item.pricingMode === 'sizes' || getItemSizePrices(item, category).length) {
+      var sizes = getEffectiveSizePrices(item, category);
+      if (!sizes.length) return row(item.name, 'Market');
+
+      return sizes.map(function(size) {
+        if (!size || size.price == null) return '';
+        return row(
+          [item.name, size.label].filter(Boolean).join(' '),
+          formatMoney(size.price),
+          size.originalPrice != null && size.price !== size.originalPrice ? formatMoney(size.originalPrice) : ''
+        );
+      }).join('');
+    }
+
+    var current = item.effectivePriceSingle != null ? item.effectivePriceSingle : item.priceSingle;
+    var original = item.priceSingle;
+    if (current == null && item.priceMedium != null) current = item.effectivePriceMedium != null ? item.effectivePriceMedium : item.priceMedium;
+    if (original == null && item.priceMedium != null) original = item.priceMedium;
+
+    return row(
+      item.name,
+      current == null ? 'Market' : formatMoney(current),
+      original != null && current !== original ? formatMoney(original) : ''
+    );
+  }
+
   function renderPromotions(container, promotions) {
     if (!container) return;
     clear(container);
@@ -382,7 +437,7 @@
     ].join('');
   }
 
-  function renderTableCategory(category) {
+  function renderLeaderCategory(category) {
     var items = category.items || [];
 
     return [
@@ -394,29 +449,26 @@
           '</div>',
           (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
         '</div>',
-        '<div class="menu-table-shell">',
-          '<table class="menu-catalog-table">',
-            '<thead>',
-              '<tr>',
-                '<th>Item</th>',
-                '<th class="menu-price-column">Prices</th>',
-              '</tr>',
-            '</thead>',
-            '<tbody>',
-              (items.length ? items.map(function(item) {
-                return [
-                  '<tr>',
-                    '<td>',
-                      '<div class="menu-table-title">' + escapeHtml(item.name) + '</div>',
-                      (item.description ? '<div class="menu-table-desc">' + escapeHtml(item.description) + '</div>' : ''),
-                      (getBadgeMarkup(item) ? '<div class="menu-table-badges">' + getBadgeMarkup(item) + '</div>' : ''),
-                    '</td>',
-                    '<td class="menu-table-price-cell">' + buildPriceMarkup(item, category) + '</td>',
-                  '</tr>'
-                ].join('');
-              }).join('') : '<tr><td colspan="2"><div class="empty-block compact">More favorites coming soon.</div></td></tr>'),
-            '</tbody>',
-          '</table>',
+        '<div class="menu-leader-list">',
+          '<div class="menu-leader-list__head" aria-hidden="true">',
+            '<span>Item</span>',
+            '<span>Prices</span>',
+          '</div>',
+          (items.length ? items.map(function(item) {
+            return [
+              '<article class="menu-leader-item">',
+                '<div class="menu-leader-item__prices">',
+                  buildLeaderPriceRows(item, category),
+                '</div>',
+                (item.description || getBadgeMarkup(item) ? [
+                  '<div class="menu-leader-item__meta">',
+                    (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
+                    (getBadgeMarkup(item) ? '<div class="menu-table-badges">' + getBadgeMarkup(item) + '</div>' : ''),
+                  '</div>'
+                ].join('') : ''),
+              '</article>'
+            ].join('');
+          }).join('') : '<div class="empty-block compact">More favorites coming soon.</div>'),
         '</div>',
       '</section>'
     ].join('');
@@ -464,8 +516,9 @@
     }
 
     container.innerHTML = categories.map(function(category) {
-      if (category.layout === 'table') return renderTableCategory(category);
-      if (category.layout === 'list') return renderListCategory(category);
+      if (category.layout === 'table' || category.layout === 'list' || !categoryHasDisplayImages(category)) {
+        return renderLeaderCategory(category);
+      }
       return renderCardCategory(category);
     }).join('');
   }
