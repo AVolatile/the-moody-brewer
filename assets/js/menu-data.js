@@ -290,12 +290,13 @@
   function buildLeaderPriceRows(item, category) {
     var priceType = item.priceType || 'numeric';
 
-    function row(label, value, originalValue) {
+    function row(label, value, originalValue, priceLabel) {
       return [
         '<div class="menu-leader-row">',
           '<span class="menu-leader-row__item">' + escapeHtml(label) + '</span>',
           '<span class="menu-leader-row__dots" aria-hidden="true"></span>',
           '<span class="menu-leader-row__price">',
+            (priceLabel ? '<span class="menu-leader-row__size">' + escapeHtml(priceLabel) + '</span>' : ''),
             escapeHtml(value),
             (originalValue ? '<span class="menu-price-original">' + escapeHtml(originalValue) + '</span>' : ''),
           '</span>',
@@ -313,9 +314,10 @@
       return sizes.map(function(size) {
         if (!size || size.price == null) return '';
         return row(
-          [item.name, size.label].filter(Boolean).join(' '),
+          item.name,
           formatMoney(size.price),
-          size.originalPrice != null && size.price !== size.originalPrice ? formatMoney(size.originalPrice) : ''
+          size.originalPrice != null && size.price !== size.originalPrice ? formatMoney(size.originalPrice) : '',
+          size.label
         );
       }).join('');
     }
