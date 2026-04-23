@@ -1,0 +1,172 @@
+{
+  "name": "moody-brewer-menu-style-revamp",
+  "type": "implementation_prompt",
+  "objective": "Revamp the menu page so it feels professional, cozy, brand-authentic, and highly scannable, with a much stronger treatment for prices and spacing across every menu section and category on both mobile and desktop.",
+  "project_context": {
+    "brand": "Moody Brewer is a warm neighborhood cafe. The menu should feel premium, intimate, and custom-built rather than template-derived.",
+    "primary_user_context": "Mobile is the primary contact point, so the menu must be optimized for narrow screens first and then scale up cleanly to desktop.",
+    "page_shell": "menu.html",
+    "rendering_logic": "assets/js/menu-data.js",
+    "menu_styles": "assets/css/theme.css",
+    "do_not_change": [
+      "Do not change the backend content model or API shape.",
+      "Do not introduce a new framework or heavy dependency.",
+      "Do not replace the existing Moody Brewer visual identity with a generic cafe theme.",
+      "Do not rely on horizontal scrolling as the primary mobile solution for table-based menu sections."
+    ]
+  },
+  "audit_findings": [
+    {
+      "severity": "high",
+      "title": "Price hierarchy is too weak across layouts",
+      "details": "Prices are currently styled as plain text with limited visual separation. In card sections, the price sits too quietly beneath the description. In table and list sections, size labels and values are readable but not prominent enough to anchor fast scanning.",
+      "evidence": [
+        "assets/css/theme.css:1596-1674",
+        "assets/js/menu-data.js:251-277"
+      ],
+      "impact": "Guests cannot scan the menu quickly, which is especially costly on mobile where price visibility needs to be immediate."
+    },
+    {
+      "severity": "high",
+      "title": "Mobile treatment for table sections is not menu-first",
+      "details": "Table sections still depend on table layout with overflow handling. That preserves structure but does not create the most readable or appealing mobile menu experience.",
+      "evidence": [
+        "assets/css/theme.css:1619-1642",
+        "assets/css/theme.css:1921-1922",
+        "assets/js/menu-data.js:385-422"
+      ],
+      "impact": "Primary mobile users get a denser, less inviting browsing experience and may need to pan or visually work harder to compare items and prices."
+    },
+    {
+      "severity": "medium",
+      "title": "Spacing rhythm is inconsistent within and between menu components",
+      "details": "Section shells, headers, cards, list rows, and price blocks use different spacing logic that does not feel intentionally composed as one menu system.",
+      "evidence": [
+        "assets/css/theme.css:1506-1697",
+        "assets/css/theme.css:1779-1790",
+        "assets/css/theme.css:1910-1919"
+      ],
+      "impact": "The page reads as assembled parts rather than a polished, premium menu with a consistent visual rhythm."
+    },
+    {
+      "severity": "medium",
+      "title": "The three menu layouts do not feel like one cohesive design language",
+      "details": "Card, table, and list categories each work independently, but their spacing, price alignment, and item framing are not unified enough to feel like one intentional menu experience.",
+      "evidence": [
+        "assets/js/menu-data.js:353-454",
+        "assets/css/theme.css:1542-1697"
+      ],
+      "impact": "Switching between categories can feel visually inconsistent, which lowers perceived polish."
+    },
+    {
+      "severity": "medium",
+      "title": "Template residue weakens the premium-cozy tone",
+      "details": "The menu page intro still uses generic language like 'Competitive Pricing', which clashes with the Moody Brewer brand and makes the page feel less custom.",
+      "evidence": [
+        "menu.html:118-119"
+      ],
+      "impact": "Even strong styling work will still feel slightly generic if the surrounding copy remains template-like."
+    },
+    {
+      "severity": "low",
+      "title": "Menu prices are not optimized for numeric scanning",
+      "details": "Price values do not use a distinct visual container or tabular numeric treatment, so repeated values and size-based pricing do not line up with the clarity of a real cafe menu.",
+      "evidence": [
+        "assets/css/theme.css:1602-1674"
+      ],
+      "impact": "The menu feels less refined and harder to compare at a glance."
+    }
+  ],
+  "implementation_direction": {
+    "design_goal": "Create a cozy-but-professional cafe menu that feels editorial, warm, and intentionally composed, using refined spacing, stronger hierarchy, and a more distinctive price presentation.",
+    "visual_direction": [
+      "Lean into warm cream, espresso, and caramel tones already present in the site instead of introducing a new color story.",
+      "Use soft panel contrast, subtle texture or gradient depth, and restrained shadows so the menu feels premium rather than flashy.",
+      "Keep typography readable and elegant. Item names should feel confident, descriptions secondary, and prices immediately scannable.",
+      "Reserve brighter accent colors for badges and interactive moments, not as the dominant menu surface color."
+    ],
+    "ux_direction": [
+      "Treat prices as a primary scanning element, not a footnote.",
+      "Reduce cognitive load on mobile by making each item easier to parse in one glance.",
+      "Ensure each category header, item block, and price block has deliberate breathing room.",
+      "Make card, table, and list categories feel like variations of the same system."
+    ]
+  },
+  "required_changes": [
+    "Refine the menu page shell in menu.html so the section heading and supporting copy feel brand-authentic instead of template-derived.",
+    "Update assets/css/theme.css to introduce a more intentional menu design system with shared spacing, surface, border, and price styles.",
+    "Update assets/js/menu-data.js only where needed to improve menu markup structure for styling, especially around price wrappers and mobile-friendly table/list rendering.",
+    "Apply the revamp consistently to all menu category layouts: card, table, and list.",
+    "Improve price presentation for both single-price items and multi-size items so they read like polished cafe menu pricing.",
+    "Improve vertical rhythm inside cards, list rows, and table rows so the spacing feels calm and premium.",
+    "Ensure the mobile layout is the strongest version of the menu, not a reduced desktop translation."
+  ],
+  "selector_targets": [
+    ".menu-catalog",
+    ".menu-catalog-section",
+    ".menu-catalog-section__header",
+    ".menu-card-grid",
+    ".menu-card",
+    ".menu-card__media",
+    ".menu-card__body",
+    ".menu-list-grid",
+    ".menu-list-card",
+    ".menu-list-card__price",
+    ".menu-table-shell",
+    ".menu-catalog-table",
+    ".menu-table-title",
+    ".menu-table-desc",
+    ".menu-table-price-cell",
+    ".price-stack",
+    ".price-current",
+    ".price-original",
+    ".menu-size-price-list",
+    ".menu-price-line",
+    ".menu-price-label",
+    ".menu-price-value",
+    ".menu-price-original"
+  ],
+  "implementation_requirements": [
+    "Introduce a stronger visual container for prices such as a chip, stacked badge, inset panel, or aligned price rail, as long as it feels elegant and brand-appropriate.",
+    "Use tabular or visually aligned numeric styling for price values if possible so repeated prices scan cleanly.",
+    "On card layouts, separate the price region from the description with clearer spacing and a more intentional anchor point.",
+    "On list layouts, ensure the price block feels stable and aligned rather than floating off to the side.",
+    "On table layouts, preserve clear item-to-price comparison on desktop but redesign the mobile behavior so it feels like a crafted menu rather than a compressed data table.",
+    "Avoid tiny uppercase labels dominating the price area; labels should support the price, not compete with it.",
+    "Ensure sold out, featured, and promo badges still fit gracefully without crowding the card or row.",
+    "Maintain accessibility with strong contrast, readable font sizes, and no fragile hover-only meaning."
+  ],
+  "mobile_requirements": [
+    "Optimize first for widths around 320px to 430px.",
+    "Eliminate awkward horizontal scrolling for menu browsing on mobile.",
+    "Keep tap targets and visual groupings comfortable even on smaller screens.",
+    "Make section padding, card padding, and row spacing feel generous without wasting space.",
+    "Ensure long item names, descriptions, and multi-size price sets wrap cleanly."
+  ],
+  "desktop_requirements": [
+    "Preserve a polished, premium look on wider screens without making the menu feel sparse.",
+    "Allow section shells to breathe and maintain consistent alignment across categories.",
+    "Use desktop space to improve comparison and hierarchy, not just increase empty margins."
+  ],
+  "content_tone_adjustments": [
+    "Replace generic template-like heading language such as 'Competitive Pricing' with copy that feels more custom, warm, and on-brand.",
+    "Keep copy minimal and credible. Avoid fake luxury language or generic cafe cliches."
+  ],
+  "acceptance_criteria": [
+    "The menu feels noticeably more premium and cozy without losing clarity.",
+    "Prices are one of the easiest elements on the page to scan.",
+    "Spacing feels intentional across every section and item type.",
+    "Card, table, and list categories feel like one unified design system.",
+    "The mobile menu experience feels first-class and does not rely on horizontal table scrolling.",
+    "Desktop retains polish and strong hierarchy.",
+    "No data-fetching or rendering regressions are introduced."
+  ],
+  "suggested_execution_order": [
+    "Audit and simplify any weak menu shell copy in menu.html.",
+    "Adjust markup in assets/js/menu-data.js only where the current structure blocks better price styling or mobile behavior.",
+    "Build shared menu tokens and layout rules in assets/css/theme.css.",
+    "Refine card sections first, then table sections, then list sections, then harmonize all three.",
+    "Verify visually at mobile and desktop breakpoints and tighten any spacing inconsistencies."
+  ],
+  "final_output_expectation": "Implement the menu redesign directly in the existing codebase with production-minded CSS and any minimal markup changes needed for structure. Keep the solution elegant, cohesive, and maintainable."
+}

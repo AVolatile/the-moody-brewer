@@ -163,6 +163,35 @@
     return parts.join('');
   }
 
+  function buildBadgeCluster(item, className) {
+    var badges = getBadgeMarkup(item);
+    return badges ? '<div class="' + className + '">' + badges + '</div>' : '';
+  }
+
+  function getSelectionCountLabel(count) {
+    var total = Number(count) || 0;
+    return total + ' ' + (total === 1 ? 'selection' : 'selections');
+  }
+
+  function buildSectionHeader(category, itemCount) {
+    return [
+      '<div class="menu-catalog-section__header">',
+        '<div class="menu-catalog-section__title-group">',
+          '<p class="menu-section-label">On the Menu</p>',
+          '<h2>' + escapeHtml(category.name) + '</h2>',
+        '</div>',
+        '<div class="menu-catalog-section__meta">',
+          (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
+          '<span class="menu-section-count">' + escapeHtml(getSelectionCountLabel(itemCount)) + '</span>',
+        '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function wrapPriceGroup(content, modifier) {
+    return '<div class="menu-price-group menu-price-group--' + modifier + '">' + content + '</div>';
+  }
+
   function normalizeSizePrices(rawSizes) {
     if (!Array.isArray(rawSizes)) return [];
     return rawSizes.map(function(size) {
@@ -228,8 +257,8 @@
 
   function buildSinglePriceMarkup(item) {
     var priceType = item.priceType || 'numeric';
-    if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
-    if (priceType === 'in_store') return '<span class="price-current">See in store</span>';
+    if (priceType === 'tbd') return wrapPriceGroup('<span class="price-current">TBD</span>', 'single');
+    if (priceType === 'in_store') return wrapPriceGroup('<span class="price-current">See in store</span>', 'single');
 
     var current = item.effectivePriceSingle != null ? item.effectivePriceSingle : item.priceSingle;
     var original = item.priceSingle;
@@ -237,21 +266,21 @@
     if (original == null && item.priceMedium != null) original = item.priceMedium;
 
     if (current == null) {
-      return '<span class="price-current">Market</span>';
+      return wrapPriceGroup('<span class="price-current">Market</span>', 'single');
     }
 
-    return [
+    return wrapPriceGroup([
       '<div class="price-stack">',
         '<span class="price-current">' + escapeHtml(formatMoney(current)) + '</span>',
         (original != null && current !== original ? '<span class="price-original">' + escapeHtml(formatMoney(original)) + '</span>' : ''),
       '</div>'
-    ].join('');
+    ].join(''), 'single');
   }
 
   function buildSizePriceMarkup(item, category) {
     var priceType = item.priceType || 'numeric';
-    if (priceType === 'tbd') return '<span class="price-current">TBD</span>';
-    if (priceType === 'in_store') return '<span class="price-current">See in store</span>';
+    if (priceType === 'tbd') return wrapPriceGroup('<span class="price-current">TBD</span>', 'sizes');
+    if (priceType === 'in_store') return wrapPriceGroup('<span class="price-current">See in store</span>', 'sizes');
 
     var sizes = getEffectiveSizePrices(item, category);
 
@@ -260,14 +289,15 @@
       return [
         '<div class="menu-price-line">',
           '<span class="menu-price-label">' + escapeHtml(size.label) + '</span>',
+          '<span class="menu-price-fill" aria-hidden="true"></span>',
           '<span class="menu-price-value">' + escapeHtml(formatMoney(size.price)) + '</span>',
           (size.originalPrice != null && size.price !== size.originalPrice ? '<span class="menu-price-original">' + escapeHtml(formatMoney(size.originalPrice)) + '</span>' : ''),
         '</div>'
       ].join('');
     }
 
-    if (!sizes.length) return '<span class="price-current">Market</span>';
-    return '<div class="menu-size-price-list">' + sizes.map(line).join('') + '</div>';
+    if (!sizes.length) return wrapPriceGroup('<span class="price-current">Market</span>', 'sizes');
+    return wrapPriceGroup('<div class="menu-size-price-list">' + sizes.map(line).join('') + '</div>', 'sizes');
   }
 
   function buildPriceMarkup(item, category) {
@@ -353,14 +383,8 @@
   function renderCardCategory(category) {
     var items = category.items || [];
     return [
-      '<section class="menu-catalog-section">',
-        '<div class="menu-catalog-section__header">',
-          '<div>',
-            '<p class="menu-section-label">On the Menu</p>',
-            '<h2>' + escapeHtml(category.name) + '</h2>',
-          '</div>',
-          (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
-        '</div>',
+      '<section class="menu-catalog-section menu-catalog-section--card">',
+        buildSectionHeader(category, items.length),
         '<div class="menu-card-grid">',
           (items.length ? items.map(function(item) {
             return [
@@ -369,10 +393,12 @@
                   buildMenuImageMarkup(item.imageUrl, item.name, 'menu-card__fallback', item.name.charAt(0)),
                 '</div>',
                 '<div class="menu-card__body">',
-                  '<div class="menu-card__badges">' + getBadgeMarkup(item) + '</div>',
-                  '<h3>' + escapeHtml(item.name) + '</h3>',
-                  (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
-                  buildPriceMarkup(item, category),
+                  buildBadgeCluster(item, 'menu-card__badges'),
+                  '<div class="menu-card__copy">',
+                    '<h3>' + escapeHtml(item.name) + '</h3>',
+                    (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
+                  '</div>',
+                  '<div class="menu-card__footer">' + buildPriceMarkup(item, category) + '</div>',
                 '</div>',
               '</article>'
             ].join('');
@@ -386,37 +412,31 @@
     var items = category.items || [];
 
     return [
-      '<section class="menu-catalog-section">',
-        '<div class="menu-catalog-section__header">',
-          '<div>',
-            '<p class="menu-section-label">On the Menu</p>',
-            '<h2>' + escapeHtml(category.name) + '</h2>',
-          '</div>',
-          (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
-        '</div>',
+      '<section class="menu-catalog-section menu-catalog-section--table">',
+        buildSectionHeader(category, items.length),
         '<div class="menu-table-shell">',
-          '<table class="menu-catalog-table">',
-            '<thead>',
-              '<tr>',
-                '<th>Item</th>',
-                '<th class="menu-price-column">Prices</th>',
-              '</tr>',
-            '</thead>',
-            '<tbody>',
+          '<div class="menu-catalog-table" role="table" aria-label="' + escapeHtml(category.name) + ' menu section">',
+            '<div class="menu-catalog-table__head" role="rowgroup">',
+              '<div class="menu-catalog-table__row menu-catalog-table__row--head" role="row">',
+                '<div role="columnheader">Item</div>',
+                '<div class="menu-price-column" role="columnheader">Prices</div>',
+              '</div>',
+            '</div>',
+            '<div class="menu-catalog-table__body" role="rowgroup">',
               (items.length ? items.map(function(item) {
                 return [
-                  '<tr>',
-                    '<td>',
-                      '<div class="menu-table-title">' + escapeHtml(item.name) + '</div>',
-                      (item.description ? '<div class="menu-table-desc">' + escapeHtml(item.description) + '</div>' : ''),
-                      (getBadgeMarkup(item) ? '<div class="menu-table-badges">' + getBadgeMarkup(item) + '</div>' : ''),
-                    '</td>',
-                    '<td class="menu-table-price-cell">' + buildPriceMarkup(item, category) + '</td>',
-                  '</tr>'
+                  '<article class="menu-table-row" role="row">',
+                    '<div class="menu-table-copy" role="cell">',
+                      '<h3 class="menu-table-title">' + escapeHtml(item.name) + '</h3>',
+                      (item.description ? '<p class="menu-table-desc">' + escapeHtml(item.description) + '</p>' : ''),
+                      buildBadgeCluster(item, 'menu-table-badges'),
+                    '</div>',
+                    '<div class="menu-table-price-cell" role="cell">' + buildPriceMarkup(item, category) + '</div>',
+                  '</article>'
                 ].join('');
-              }).join('') : '<tr><td colspan="2"><div class="empty-block compact">More favorites coming soon.</div></td></tr>'),
-            '</tbody>',
-          '</table>',
+              }).join('') : '<div class="empty-block compact">More favorites coming soon.</div>'),
+            '</div>',
+          '</div>',
         '</div>',
       '</section>'
     ].join('');
@@ -425,22 +445,18 @@
   function renderListCategory(category) {
     var items = category.items || [];
     return [
-      '<section class="menu-catalog-section">',
-        '<div class="menu-catalog-section__header">',
-          '<div>',
-            '<p class="menu-section-label">On the Menu</p>',
-            '<h2>' + escapeHtml(category.name) + '</h2>',
-          '</div>',
-          (category.description ? '<p class="menu-catalog-section__description">' + escapeHtml(category.description) + '</p>' : ''),
-        '</div>',
+      '<section class="menu-catalog-section menu-catalog-section--list">',
+        buildSectionHeader(category, items.length),
         '<div class="menu-list-grid">',
           (items.length ? items.map(function(item) {
             return [
               '<article class="menu-list-card">',
                 '<div class="menu-list-card__content">',
-                  '<div class="menu-card__badges">' + getBadgeMarkup(item) + '</div>',
-                  '<h3>' + escapeHtml(item.name) + '</h3>',
-                  (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
+                  buildBadgeCluster(item, 'menu-card__badges'),
+                  '<div class="menu-list-card__copy">',
+                    '<h3>' + escapeHtml(item.name) + '</h3>',
+                    (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : ''),
+                  '</div>',
                 '</div>',
                 '<div class="menu-list-card__price">',
                   buildPriceMarkup(item, category),
