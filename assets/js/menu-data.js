@@ -277,6 +277,65 @@
     return buildSinglePriceMarkup(item);
   }
 
+  function normalizeMenuIdentity(value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  function mergeSizePriceRows(existingSizes, incomingSizes) {
+    var merged = Array.isArray(existingSizes) ? existingSizes.slice() : [];
+    var labels = {};
+
+    merged.forEach(function(size) {
+      if (size && size.label) labels[normalizeMenuIdentity(size.label)] = true;
+    });
+
+    (Array.isArray(incomingSizes) ? incomingSizes : []).forEach(function(size) {
+      var labelKey = size && size.label ? normalizeMenuIdentity(size.label) : '';
+      var mergedSize;
+      if (!labelKey || labels[labelKey]) return;
+      labels[labelKey] = true;
+      mergedSize = {
+        label: size.label,
+        price: size.price
+      };
+      if (size.originalPrice != null) mergedSize.originalPrice = size.originalPrice;
+      merged.push(mergedSize);
+    });
+
+    return merged;
+  }
+
+  function groupLeaderItems(items, category) {
+    var grouped = [];
+    var groupsByKey = {};
+
+    (Array.isArray(items) ? items : []).forEach(function(item) {
+      var key = [
+        normalizeMenuIdentity(item && item.name),
+        normalizeMenuIdentity(item && item.description),
+        normalizeMenuIdentity(item && item.priceType)
+      ].join('|');
+      var existing = groupsByKey[key];
+
+      if (!existing) {
+        existing = Object.assign({}, item);
+        groupsByKey[key] = existing;
+        grouped.push(existing);
+        return;
+      }
+
+      var existingSizes = getItemSizePrices(existing, category);
+      var incomingSizes = getItemSizePrices(item, category);
+      if (!existingSizes.length && !incomingSizes.length) return;
+
+      existing.pricingMode = 'sizes';
+      existing.sizes = mergeSizePriceRows(existingSizes, incomingSizes);
+      existing.effectiveSizes = mergeSizePriceRows(getEffectiveSizePrices(existing, category), getEffectiveSizePrices(item, category));
+    });
+
+    return grouped;
+  }
+
   function hasDisplayImage(item) {
     var imageUrl = item && item.imageUrl ? String(item.imageUrl).trim() : '';
     return Boolean(imageUrl && !getImagePlaceholderConfig(imageUrl));
@@ -290,10 +349,14 @@
   function buildLeaderPriceRows(item, category) {
     var priceType = item.priceType || 'numeric';
 
-    function row(label, value, originalValue, priceLabel) {
+    function row(value, originalValue, priceLabel, showItemLabel) {
+      var titleMarkup = showItemLabel
+        ? '<span class="menu-leader-row__item">' + escapeHtml(item.name) + '</span>'
+        : '<span class="menu-leader-row__item menu-leader-row__item--empty" aria-hidden="true"></span>';
+
       return [
         '<div class="menu-leader-row">',
-          '<span class="menu-leader-row__item">' + escapeHtml(label) + '</span>',
+          titleMarkup,
           '<span class="menu-leader-row__dots" aria-hidden="true"></span>',
           '<span class="menu-leader-row__price">',
             (priceLabel ? '<span class="menu-leader-row__size">' + escapeHtml(priceLabel) + '</span>' : ''),
@@ -304,20 +367,20 @@
       ].join('');
     }
 
-    if (priceType === 'tbd') return row(item.name, 'TBD');
-    if (priceType === 'in_store') return row(item.name, 'See in store');
+    if (priceType === 'tbd') return row('TBD', '', '', true);
+    if (priceType === 'in_store') return row('See in store', '', '', true);
 
     if (item.pricingMode === 'sizes' || getItemSizePrices(item, category).length) {
       var sizes = getEffectiveSizePrices(item, category);
-      if (!sizes.length) return row(item.name, 'Market');
+      if (!sizes.length) return row('Market', '', '', true);
 
-      return sizes.map(function(size) {
+      return sizes.map(function(size, index) {
         if (!size || size.price == null) return '';
         return row(
-          item.name,
           formatMoney(size.price),
           size.originalPrice != null && size.price !== size.originalPrice ? formatMoney(size.originalPrice) : '',
-          size.label
+          size.label,
+          index === 0
         );
       }).join('');
     }
@@ -328,9 +391,10 @@
     if (original == null && item.priceMedium != null) original = item.priceMedium;
 
     return row(
-      item.name,
       current == null ? 'Market' : formatMoney(current),
-      original != null && current !== original ? formatMoney(original) : ''
+      original != null && current !== original ? formatMoney(original) : '',
+      '',
+      true
     );
   }
 
@@ -440,7 +504,7 @@
   }
 
   function renderLeaderCategory(category) {
-    var items = category.items || [];
+    var items = groupLeaderItems(category.items || [], category);
 
     return [
       '<section class="menu-catalog-section">',
