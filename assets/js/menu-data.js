@@ -64,7 +64,12 @@
     }
 
     if (imageUrl) {
-      return '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '" loading="lazy">';
+      return [
+        '<div class="image-skeleton-wrapper is-loading" data-image-skeleton>',
+          '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '" loading="lazy" decoding="async">',
+          '<div class="image-error-fallback" role="img" aria-label="Image unavailable">Image unavailable</div>',
+        '</div>'
+      ].join('');
     }
 
     return '<div class="' + fallbackClass + '"><span>' + escapeHtml(fallbackText) + '</span></div>';

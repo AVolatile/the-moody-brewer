@@ -101,7 +101,10 @@
         <div id="blog-carousel" class="carousel slide overlay-bottom" data-ride="carousel">
             <div class="carousel-inner">
                 <div class="carousel-item active">
-                    <img class="w-100" src="./assets/images/cheers_banner.png" alt="Moody Brewer">
+                    <div class="hero-image-frame image-skeleton-wrapper is-loading" data-image-skeleton>
+                        <img class="w-100" src="./assets/images/cheers_banner.png" alt="Moody Brewer" decoding="async">
+                        <div class="image-error-fallback" role="img" aria-label="Image unavailable">Image unavailable</div>
+                    </div>
                     <div class="carousel-caption d-flex flex-column align-items-center justify-content-center">
                         <h2 class="text-primary font-weight-medium m-0">Enjoy Your Coffee</h2>
                         <h1 class="display-1 text-white m-0">Moody Brewer</h1>
@@ -398,6 +401,7 @@
     <script src="js/main.js"></script>
     <script src="./assets/js/live-reviews.js"></script>
     <script src="./assets/js/mb-nav.js"></script>
+    <script src="./assets/js/image-loading.js"></script>
     <!-- Dynamic menu content -->
     <script src="./assets/js/menu-data.js"></script>
 </body>

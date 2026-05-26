@@ -119,8 +119,9 @@
                     </article>
 
                     <div class="about-visual-card">
-                        <div class="about-visual-frame">
-                            <img src="./assets/images/owner-hero.png" alt="Owner at Moody Brewer">
+                        <div class="about-visual-frame image-skeleton-wrapper is-loading" data-image-skeleton>
+                            <img src="./assets/images/owner-hero.png" alt="Owner at Moody Brewer" loading="lazy" decoding="async">
+                            <div class="image-error-fallback" role="img" aria-label="Image unavailable">Image unavailable</div>
                         </div>
                         <div class="about-visual-note">
                             <span class="about-visual-note__eyebrow">The Moody Brewer mood</span>
@@ -249,6 +250,7 @@
     <!-- Template Javascript -->
     <script src="js/main.js"></script>
     <script src="./assets/js/mb-nav.js"></script>
+    <script src="./assets/js/image-loading.js"></script>
 </body>
 
 </html>

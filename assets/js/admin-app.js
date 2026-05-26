@@ -209,7 +209,12 @@
       return '<div class="item-img-placeholder item-img-placeholder--' + escapeHtml(placeholder.key) + '"><i class="fa ' + escapeHtml(placeholder.icon) + '"></i></div>';
     }
     if (imageUrl) {
-      return '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '">';
+      return [
+        '<div class="image-skeleton-wrapper admin-card-image-skeleton is-loading" data-image-skeleton>',
+          '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(altText) + '" loading="lazy" decoding="async">',
+          '<div class="image-error-fallback" role="img" aria-label="Image unavailable">Image unavailable</div>',
+        '</div>'
+      ].join('');
     }
     return '<div class="item-img-placeholder"><i class="fa ' + escapeHtml(fallbackIcon || 'fa-image') + '"></i></div>';
   }

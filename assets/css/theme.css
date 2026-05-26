@@ -422,8 +422,75 @@ body { padding-top: 0 !important; }
   text-align: center;
 }
 .carousel .carousel-item img { height: 860px; width: 100%; object-fit: cover; }
+.image-skeleton-wrapper {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(248,199,109,.14), rgba(255,247,242,.94));
+}
+.image-skeleton-wrapper img {
+  display: block;
+  opacity: 0;
+  transition: opacity .32s ease;
+}
+.image-skeleton-wrapper.is-loaded img {
+  opacity: 1;
+}
+.image-skeleton-wrapper.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.62) 46%, rgba(255,255,255,.18) 100%);
+  background-size: 220% 100%;
+  animation: image-skeleton-shimmer 1.45s ease-in-out infinite;
+}
+.image-skeleton-wrapper.has-error img {
+  display: none;
+}
+.image-error-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  color: rgba(43,26,30,.58);
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-align: center;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(248,199,109,.18), rgba(255,245,233,.96));
+}
+.image-skeleton-wrapper.has-error .image-error-fallback {
+  display: flex;
+}
+.hero-image-frame {
+  height: 860px;
+  width: 100%;
+}
+.hero-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@keyframes image-skeleton-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-skeleton-wrapper img {
+    transition: none;
+  }
+  .image-skeleton-wrapper.is-loading::before {
+    animation: none;
+  }
+}
 @media (max-width: 768px) {
   .carousel .carousel-item img { height: 520px; }
+  .hero-image-frame { height: 520px; }
   .carousel-caption > h2:first-child {
     margin-bottom: 12px !important;
   }
@@ -444,6 +511,7 @@ body { padding-top: 0 !important; }
 }
 @media (min-width: 1200px) {
   .carousel .carousel-item img { height: 680px; }
+  .hero-image-frame { height: 680px; }
   .carousel-caption .display-1 { font-size: 5.4rem; line-height: 1.06; }
   .carousel-caption h2 { font-size: 1.28rem; }
   .display-4 { font-size: 2.7rem; }
@@ -610,6 +678,12 @@ body { padding-top: 0 !important; }
   width: 100%;
   aspect-ratio: 4 / 5;
   object-fit: cover;
+}
+.about-visual-frame.image-skeleton-wrapper {
+  aspect-ratio: 4 / 5;
+}
+.about-visual-frame.image-skeleton-wrapper img {
+  height: 100%;
 }
 .about-visual-note {
   position: relative;
@@ -1087,7 +1161,7 @@ img.rounded-circle {
 .footer {
     position: relative;
     overflow: hidden;
-    background: linear-gradient(rgba(51, 33, 29, .9), rgba(51, 33, 29, .9)), url(../img/bg.jpg);
+    background: linear-gradient(rgba(51, 33, 29, .9), rgba(51, 33, 29, .9)), url(../../img/bg.jpg);
     background-position: top;
     background-repeat: no-repeat;
     background-size: cover;
@@ -1409,6 +1483,21 @@ img.rounded-circle {
   border-radius: 28px;
   box-shadow: 0 14px 32px rgba(43,26,30,.16);
 }
+.featured-showcase-card__media .image-skeleton-wrapper {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1 / 1;
+  border-radius: 28px;
+  box-shadow: 0 14px 32px rgba(43,26,30,.16);
+}
+.featured-showcase-card__media .image-skeleton-wrapper img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: cover;
+}
 .featured-showcase-card__fallback,
 .menu-card__fallback {
   width: 100%;
@@ -1566,6 +1655,21 @@ img.rounded-circle {
   object-fit: cover;
   border-radius: 28px;
   box-shadow: 0 10px 24px rgba(43,26,30,.12);
+}
+.menu-card__media .image-skeleton-wrapper {
+  width: 100%;
+  max-width: 180px;
+  aspect-ratio: 1 / 1;
+  border-radius: 28px;
+  box-shadow: 0 10px 24px rgba(43,26,30,.12);
+}
+.menu-card__media .image-skeleton-wrapper img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: cover;
 }
 .menu-card__media .menu-card__fallback {
   max-width: 180px;
