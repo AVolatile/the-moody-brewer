@@ -25,6 +25,7 @@
     <!-- Customized Bootstrap Stylesheet -->
     <link href="css/style.min.css" rel="stylesheet">
 <link rel="stylesheet" href="./assets/css/theme.css">
+<link rel="stylesheet" href="./assets/css/closure-notice.css">
 <style>
   /* ── Menu skeleton loading animation ── */
   @keyframes mb-shimmer {
@@ -63,6 +64,25 @@
 </head>
 
 <body>
+    <dialog class="closure-notice" id="closure-notice" role="alertdialog" aria-labelledby="closure-notice-title" aria-describedby="closure-notice-dates closure-notice-reopening" data-expires-at="2026-11-02T00:00:00-05:00">
+        <form method="dialog">
+            <button class="closure-notice__close" type="submit" aria-label="Close closure notice" autofocus>
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p class="closure-notice__eyebrow">Moody Brewer &middot; Shop update</p>
+            <h2 id="closure-notice-title">Temporary closure</h2>
+            <p class="closure-notice__intro">A heads-up before your next coffee run.</p>
+            <p class="closure-notice__dates" id="closure-notice-dates">
+                <span class="closure-notice__label">The coffee shop will be closed</span>
+                <strong><time datetime="2026-10-12">October 12, 2026</time><span class="closure-notice__through">through</span><time datetime="2026-11-01">November 1, 2026</time></strong>
+            </p>
+            <p class="closure-notice__reopening" id="closure-notice-reopening">We&rsquo;ll reopen on <strong><time datetime="2026-11-02">November 2, 2026</time></strong><br>at our normal operating hours.</p>
+            <p class="closure-notice__thanks">Thank you for your understanding. See you soon!</p>
+            <button class="closure-notice__confirm" type="submit">Got it, thank you</button>
+        </form>
+    </dialog>
+    <script src="./assets/js/closure-notice.js"></script>
+
     <!-- Navbar Start -->
     <header class="nav-bar premium-nav" data-site-nav>
         <nav class="site-nav" aria-label="Primary navigation">
